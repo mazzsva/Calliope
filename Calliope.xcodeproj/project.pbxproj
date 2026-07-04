@@ -10,6 +10,7 @@
 		EFEF340C2FF9633100E80CBE /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = EFEF340B2FF9633100E80CBE /* ComposableArchitecture */; };
 		EFEF34182FF9871900E80CBE /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = EFEF34172FF9871900E80CBE /* FirebaseCore */; };
 		EFEF341A2FF9876D00E80CBE /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = EFEF34192FF9876D00E80CBE /* FirebaseAuth */; };
+		EFEF341C2FF987B500E80CBE /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = EFEF341B2FF987B500E80CBE /* FirebaseFirestore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +31,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EFEF34182FF9871900E80CBE /* FirebaseCore in Frameworks */,
+				EFEF341C2FF987B500E80CBE /* FirebaseFirestore in Frameworks */,
 				EFEF341A2FF9876D00E80CBE /* FirebaseAuth in Frameworks */,
 				EFEF340C2FF9633100E80CBE /* ComposableArchitecture in Frameworks */,
 			);
@@ -86,6 +88,7 @@
 				EFEF340B2FF9633100E80CBE /* ComposableArchitecture */,
 				EFEF34172FF9871900E80CBE /* FirebaseCore */,
 				EFEF34192FF9876D00E80CBE /* FirebaseAuth */,
+				EFEF341B2FF987B500E80CBE /* FirebaseFirestore */,
 			);
 			productName = Calliope;
 			productReference = EFEF33F52FF954F400E80CBE /* Calliope.app */;
@@ -423,6 +426,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = EFEF34152FF9863E00E80CBE /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAuth;
+		};
+		EFEF341B2FF987B500E80CBE /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EFEF34152FF9863E00E80CBE /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
