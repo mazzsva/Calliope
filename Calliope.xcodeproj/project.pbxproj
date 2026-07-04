@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		EFEF340C2FF9633100E80CBE /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = EFEF340B2FF9633100E80CBE /* ComposableArchitecture */; };
+		EFEF34182FF9871900E80CBE /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = EFEF34172FF9871900E80CBE /* FirebaseCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,6 +28,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EFEF34182FF9871900E80CBE /* FirebaseCore in Frameworks */,
 				EFEF340C2FF9633100E80CBE /* ComposableArchitecture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -38,6 +40,7 @@
 			isa = PBXGroup;
 			children = (
 				EFEF33F72FF954F400E80CBE /* Calliope */,
+				EFEF34162FF9871900E80CBE /* Frameworks */,
 				EFEF33F62FF954F400E80CBE /* Products */,
 			);
 			sourceTree = "<group>";
@@ -48,6 +51,13 @@
 				EFEF33F52FF954F400E80CBE /* Calliope.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		EFEF34162FF9871900E80CBE /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -72,6 +82,7 @@
 			name = Calliope;
 			packageProductDependencies = (
 				EFEF340B2FF9633100E80CBE /* ComposableArchitecture */,
+				EFEF34172FF9871900E80CBE /* FirebaseCore */,
 			);
 			productName = Calliope;
 			productReference = EFEF33F52FF954F400E80CBE /* Calliope.app */;
@@ -399,6 +410,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = EFEF340A2FF9633100E80CBE /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
 			productName = ComposableArchitecture;
+		};
+		EFEF34172FF9871900E80CBE /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EFEF34152FF9863E00E80CBE /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
