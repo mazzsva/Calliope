@@ -52,6 +52,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = EFEF34002FF954F500E80CBE /* Build configuration list for PBXNativeTarget "Calliope" */;
 			buildPhases = (
+				EFEF34092FF95F8500E80CBE /* swiftlang/swift-format */,
 				EFEF33F12FF954F400E80CBE /* Sources */,
 				EFEF33F22FF954F400E80CBE /* Frameworks */,
 				EFEF33F32FF954F400E80CBE /* Resources */,
@@ -113,6 +114,29 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		EFEF34092FF95F8500E80CBE /* swiftlang/swift-format */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "swiftlang/swift-format";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "swift-format format -i -r .\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		EFEF33F12FF954F400E80CBE /* Sources */ = {
