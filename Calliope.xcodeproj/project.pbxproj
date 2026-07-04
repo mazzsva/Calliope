@@ -103,6 +103,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				EFEF340A2FF9633100E80CBE /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
+				EFEF34152FF9863E00E80CBE /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = EFEF33F62FF954F400E80CBE /* Products */;
@@ -381,6 +382,14 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 1.26.0;
+			};
+		};
+		EFEF34152FF9863E00E80CBE /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.15.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
