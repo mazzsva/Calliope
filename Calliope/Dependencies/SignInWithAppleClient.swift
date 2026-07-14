@@ -15,6 +15,7 @@ import UIKit
 
 @DependencyClient
 struct SignInWithAppleClient: Sendable {
+    var credentialRevocations: @Sendable () -> AsyncStream<Void> = { AsyncStream { _ in } }
     var credentialState: @Sendable (_ forUserID: String) async -> AppleCredentialState = { _ in .authorized }
     var requestCredential: @Sendable () async throws -> AppleCredential
 }
@@ -45,6 +46,20 @@ enum AppleCredentialState: Equatable, Sendable {
 extension SignInWithAppleClient: DependencyKey {
     static var liveValue: SignInWithAppleClient {
         SignInWithAppleClient(
+            credentialRevocations: {
+                AsyncStream { continuation in
+                    let observer = NotificationCenter.default.addObserver(
+                        forName: ASAuthorizationAppleIDProvider.credentialRevokedNotification,
+                        object: nil,
+                        queue: nil
+                    ) { _ in
+                        continuation.yield()
+                    }
+                    continuation.onTermination = { _ in
+                        NotificationCenter.default.removeObserver(observer)
+                    }
+                }
+            },
             credentialState: { userID in
                 await withCheckedContinuation { continuation in
                     ASAuthorizationAppleIDProvider()
@@ -92,6 +107,7 @@ extension SignInWithAppleClient: DependencyKey {
 
     static var previewValue: SignInWithAppleClient {
         SignInWithAppleClient(
+            credentialRevocations: { AsyncStream { _ in } },
             credentialState: { _ in .authorized },
             requestCredential: { .mock }
         )
