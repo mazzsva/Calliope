@@ -15,6 +15,7 @@ import UIKit
 
 @DependencyClient
 struct SignInWithAppleClient: Sendable {
+    var credentialState: @Sendable (_ forUserID: String) async -> AppleCredentialState = { _ in .authorized }
     var requestCredential: @Sendable () async throws -> AppleCredential
 }
 
@@ -34,9 +35,38 @@ extension AppleCredential {
     )
 }
 
+enum AppleCredentialState: Equatable, Sendable {
+    case authorized
+    case indeterminate
+    case notFound
+    case revoked
+}
+
 extension SignInWithAppleClient: DependencyKey {
     static var liveValue: SignInWithAppleClient {
         SignInWithAppleClient(
+            credentialState: { userID in
+                await withCheckedContinuation { continuation in
+                    ASAuthorizationAppleIDProvider()
+                        .getCredentialState(forUserID: userID) { state, error in
+                            guard error == nil else {
+                                return continuation.resume(returning: .indeterminate)
+                            }
+                            switch state {
+                            case .authorized:
+                                continuation.resume(returning: .authorized)
+                            case .notFound:
+                                continuation.resume(returning: .notFound)
+                            case .revoked:
+                                continuation.resume(returning: .revoked)
+                            case .transferred:
+                                continuation.resume(returning: .indeterminate)
+                            @unknown default:
+                                continuation.resume(returning: .indeterminate)
+                            }
+                        }
+                }
+            },
             requestCredential: {
                 // Apple signs a hash of the nonce; Firebase verifies it against the raw value
                 let rawNonce = randomNonce()
@@ -62,6 +92,7 @@ extension SignInWithAppleClient: DependencyKey {
 
     static var previewValue: SignInWithAppleClient {
         SignInWithAppleClient(
+            credentialState: { _ in .authorized },
             requestCredential: { .mock }
         )
     }
