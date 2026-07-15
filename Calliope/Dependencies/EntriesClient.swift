@@ -14,6 +14,7 @@ import IssueReporting
 @DependencyClient
 struct EntriesClient: Sendable {
     var delete: @Sendable (_ id: Entry.ID, _ uid: String) async throws -> Void
+    var deleteAll: @Sendable (_ uid: String) async throws -> Void
 
     var entries: @Sendable (_ uid: String) -> AsyncThrowingStream<EntriesSnapshot, any Error> = { _ in
         AsyncThrowingStream { _ in }
@@ -39,6 +40,18 @@ extension EntriesClient: DependencyKey {
         EntriesClient(
             delete: { id, uid in
                 try await entriesCollection(uid: uid).document(id.uuidString).delete()
+            },
+            deleteAll: { uid in
+                // Firestore caps a write batch at 500 operations, so delete in pages
+                while true {
+                    let snapshot = try await entriesCollection(uid: uid).limit(to: 500).getDocuments()
+                    guard !snapshot.documents.isEmpty else { return }
+                    let batch = Firestore.firestore().batch()
+                    for document in snapshot.documents {
+                        batch.deleteDocument(document.reference)
+                    }
+                    try await batch.commit()
+                }
             },
             entries: { uid in
                 AsyncThrowingStream { continuation in
@@ -73,6 +86,7 @@ extension EntriesClient: DependencyKey {
     static var previewValue: EntriesClient {
         EntriesClient(
             delete: { _, _ in },
+            deleteAll: { _ in },
             entries: { _ in
                 AsyncThrowingStream { continuation in
                     continuation.yield(.mock)
