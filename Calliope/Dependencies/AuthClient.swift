@@ -11,7 +11,11 @@ import FirebaseAuth
 
 @DependencyClient
 struct AuthClient: Sendable {
+    var appleUserID: @Sendable () -> String? = { nil }
     var authStateChanges: @Sendable () -> AsyncStream<User?> = { AsyncStream { _ in } }
+    var deleteAccount: @Sendable () async throws -> Void
+    var reauthenticate: @Sendable (_ credential: AppleCredential) async throws -> Void
+    var revokeAppleToken: @Sendable (_ authorizationCode: String) async throws -> Void
     var signIn: @Sendable (_ credential: AppleCredential) async throws -> Void
     var signOut: @Sendable () async throws -> Void
 }
@@ -19,6 +23,12 @@ struct AuthClient: Sendable {
 extension AuthClient: DependencyKey {
     static var liveValue: AuthClient {
         AuthClient(
+            appleUserID: {
+                // Apple's own user id lives in the provider data, distinct from Firebase's uid
+                Auth.auth().currentUser?.providerData
+                    .first { $0.providerID == AuthProviderID.apple.rawValue }?
+                    .uid
+            },
             authStateChanges: {
                 AsyncStream { continuation in
                     let handle = Auth.auth()
@@ -29,6 +39,15 @@ extension AuthClient: DependencyKey {
                         Auth.auth().removeStateDidChangeListener(handle)
                     }
                 }
+            },
+            deleteAccount: {
+                try await currentUser().delete()
+            },
+            reauthenticate: { credential in
+                try await currentUser().reauthenticate(with: firebaseCredential(from: credential))
+            },
+            revokeAppleToken: { authorizationCode in
+                try await Auth.auth().revokeToken(withAuthorizationCode: authorizationCode)
             },
             signIn: { credential in
                 try await Auth.auth().signIn(with: firebaseCredential(from: credential))
@@ -41,11 +60,15 @@ extension AuthClient: DependencyKey {
 
     static var previewValue: AuthClient {
         AuthClient(
+            appleUserID: { "mock-apple-user-id" },
             authStateChanges: {
                 AsyncStream { continuation in
                     continuation.yield(.mock)
                 }
             },
+            deleteAccount: {},
+            reauthenticate: { _ in },
+            revokeAppleToken: { _ in },
             signIn: { _ in },
             signOut: {}
         )
@@ -61,6 +84,15 @@ extension DependencyValues {
         get { self[AuthClient.self] }
         set { self[AuthClient.self] = newValue }
     }
+}
+
+private enum AuthClientError: Error {
+    case notSignedIn
+}
+
+private func currentUser() throws -> FirebaseAuth.User {
+    guard let user = Auth.auth().currentUser else { throw AuthClientError.notSignedIn }
+    return user
 }
 
 private func firebaseCredential(from credential: AppleCredential) -> AuthCredential {
