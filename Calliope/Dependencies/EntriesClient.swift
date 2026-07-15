@@ -13,6 +13,7 @@ import IssueReporting
 
 @DependencyClient
 struct EntriesClient: Sendable {
+    var clearLocalData: @Sendable () async throws -> Void
     var delete: @Sendable (_ id: Entry.ID, _ uid: String) async throws -> Void
     var deleteAll: @Sendable (_ uid: String) async throws -> Void
 
@@ -38,6 +39,12 @@ extension EntriesSnapshot {
 extension EntriesClient: DependencyKey {
     static var liveValue: EntriesClient {
         EntriesClient(
+            clearLocalData: {
+                let firestore = Firestore.firestore()
+                // Firestore requires termination before persistence can be cleared
+                try await firestore.terminate()
+                try await firestore.clearPersistence()
+            },
             delete: { id, uid in
                 try await entriesCollection(uid: uid).document(id.uuidString).delete()
             },
@@ -85,6 +92,7 @@ extension EntriesClient: DependencyKey {
 
     static var previewValue: EntriesClient {
         EntriesClient(
+            clearLocalData: {},
             delete: { _, _ in },
             deleteAll: { _ in },
             entries: { _ in
