@@ -13,9 +13,13 @@ import IssueReporting
 
 @DependencyClient
 struct EntriesClient: Sendable {
+    var delete: @Sendable (_ id: Entry.ID, _ uid: String) async throws -> Void
+
     var entries: @Sendable (_ uid: String) -> AsyncThrowingStream<EntriesSnapshot, any Error> = { _ in
         AsyncThrowingStream { _ in }
     }
+
+    var save: @Sendable (_ entry: Entry, _ uid: String) async throws -> Void
 }
 
 struct EntriesSnapshot: Equatable, Sendable {
@@ -33,6 +37,9 @@ extension EntriesSnapshot {
 extension EntriesClient: DependencyKey {
     static var liveValue: EntriesClient {
         EntriesClient(
+            delete: { id, uid in
+                try await entriesCollection(uid: uid).document(id.uuidString).delete()
+            },
             entries: { uid in
                 AsyncThrowingStream { continuation in
                     let listener = entriesCollection(uid: uid)
@@ -56,17 +63,22 @@ extension EntriesClient: DependencyKey {
                         listener.remove()
                     }
                 }
+            },
+            save: { entry, uid in
+                try await entriesCollection(uid: uid).document(entry.id.uuidString).setData(entry.documentData)
             }
         )
     }
 
     static var previewValue: EntriesClient {
         EntriesClient(
+            delete: { _, _ in },
             entries: { _ in
                 AsyncThrowingStream { continuation in
                     continuation.yield(.mock)
                 }
-            }
+            },
+            save: { _, _ in }
         )
     }
 
@@ -108,5 +120,15 @@ extension Entry {
             createdAt: createdAt.dateValue(),
             updatedAt: updatedAt.dateValue()
         )
+    }
+
+    fileprivate var documentData: [String: Any] {
+        [
+            "term": term,
+            "definition": definition,
+            "isBookmarked": isBookmarked,
+            "createdAt": Timestamp(date: createdAt),
+            "updatedAt": Timestamp(date: updatedAt),
+        ]
     }
 }
