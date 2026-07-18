@@ -37,9 +37,11 @@ struct SignIn {
         case authorizationResponse(Result<AppleCredential, any Error>)
         case signInButtonTapped
         case signInResponse(Result<Void, any Error>)
+        case signInTransitionTimedOut
     }
 
     @Dependency(\.authClient) var authClient
+    @Dependency(\.continuousClock) var clock
     @Dependency(\.signInWithAppleClient) var signInWithAppleClient
 
     var body: some Reducer<State, Action> {
@@ -70,14 +72,23 @@ struct SignIn {
                     await send(.authorizationResponse(Result { try await signInWithAppleClient.requestCredential() }))
                 }
 
-            // Keep the signing-in step until the auth listener swaps to the authenticated scene
+            // Keep the signing-in step until the auth listener's scene swap, which also cancels this stall-guard timer
             case .signInResponse(.success):
-                return .none
+                return .run { send in
+                    try await clock.sleep(for: .seconds(15))
+                    await send(.signInTransitionTimedOut)
+                }
 
             case .signInResponse(.failure(let error)):
                 // A cancellation can't reach here; the Apple sheet is already dismissed, so any failure is real
                 state.step = nil
                 reportIssue(error, "Sign in failed.")
+                state.alert = .signInFailed
+                return .none
+
+            case .signInTransitionTimedOut:
+                reportIssue("Firebase sign-in succeeded but the authenticated screen never appeared.")
+                state.step = nil
                 state.alert = .signInFailed
                 return .none
             }
