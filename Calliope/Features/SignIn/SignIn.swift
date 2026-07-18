@@ -7,11 +7,13 @@
 
 import ComposableArchitecture
 import Foundation
+import IssueReporting
 
 @Reducer
 struct SignIn {
     @ObservableState
     struct State: Equatable {
+        @Presents var alert: AlertState<Never>?
         var step: Step?
 
         enum Step: Equatable {
@@ -31,6 +33,7 @@ struct SignIn {
     }
 
     enum Action {
+        case alert(PresentationAction<Never>)
         case authorizationResponse(Result<AppleCredential, any Error>)
         case signInButtonTapped
         case signInResponse(Result<Void, any Error>)
@@ -42,6 +45,9 @@ struct SignIn {
     var body: some Reducer<State, Action> {
         Reduce { state, action in
             switch action {
+            case .alert:
+                return .none
+
             case .authorizationResponse(.success(let credential)):
                 // Drives only the loading copy, so Apple's first-authorization heuristic is accurate enough
                 state.step = .signingIn(isNewAccount: credential.isFirstAuthorization)
@@ -49,8 +55,12 @@ struct SignIn {
                     await send(.signInResponse(Result { try await authClient.signIn(credential: credential) }))
                 }
 
-            case .authorizationResponse(.failure):
+            case .authorizationResponse(.failure(let error)):
                 state.step = nil
+                if !error.isSignInWithAppleCancellation {
+                    reportIssue(error, "Sign in failed.")
+                    state.alert = .signInFailed
+                }
                 return .none
 
             case .signInButtonTapped:
@@ -64,10 +74,22 @@ struct SignIn {
             case .signInResponse(.success):
                 return .none
 
-            case .signInResponse(.failure):
+            case .signInResponse(.failure(let error)):
+                // A cancellation can't reach here; the Apple sheet is already dismissed, so any failure is real
                 state.step = nil
+                reportIssue(error, "Sign in failed.")
+                state.alert = .signInFailed
                 return .none
             }
         }
+        .ifLet(\.$alert, action: \.alert)
+    }
+}
+
+extension AlertState where Action == Never {
+    static let signInFailed = AlertState {
+        TextState("Couldn't Sign In")
+    } message: {
+        TextState("Something went wrong while signing in. Please try again.")
     }
 }

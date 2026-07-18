@@ -9,7 +9,7 @@ import ComposableArchitecture
 import SwiftUI
 
 struct SignInView: View {
-    let store: StoreOf<SignIn>
+    @Bindable var store: StoreOf<SignIn>
 
     var body: some View {
         VStack {
@@ -27,6 +27,7 @@ struct SignInView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .groupedBackground()
+        .alert($store.scope(state: \.alert, action: \.alert))
     }
 }
 
