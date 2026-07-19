@@ -10,6 +10,10 @@ import Foundation
 
 @Reducer
 struct EntryForm {
+    // Kept under the Firestore rules limits; counted in UTF-8 bytes, which bounds any unit the rules measure
+    static let maxDefinitionUTF8Count = 40_000
+    static let maxTermUTF8Count = 800
+
     enum Mode: Equatable {
         case create
         case edit(Entry)
@@ -62,6 +66,14 @@ struct EntryForm {
         BindingReducer()
         Reduce { state, action in
             switch action {
+            case .binding(\.definition):
+                state.definition = String(state.definition.prefix(utf8Count: Self.maxDefinitionUTF8Count))
+                return .none
+
+            case .binding(\.term):
+                state.term = String(state.term.prefix(utf8Count: Self.maxTermUTF8Count))
+                return .none
+
             case .binding:
                 return .none
 
@@ -99,5 +111,21 @@ struct EntryForm {
                 return .send(.delegate(.didSubmit(entry)))
             }
         }
+    }
+}
+
+extension String {
+    // Truncate on character boundaries so a multi-byte character is never split across the byte limit
+    fileprivate func prefix(utf8Count: Int) -> Substring {
+        guard utf8.count > utf8Count else { return self[...] }
+        var count = 0
+        var end = startIndex
+        while end < endIndex {
+            let next = index(after: end)
+            count += self[end ..< next].utf8.count
+            guard count <= utf8Count else { break }
+            end = next
+        }
+        return self[..<end]
     }
 }
