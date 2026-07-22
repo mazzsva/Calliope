@@ -12,6 +12,7 @@ import IssueReporting
 @Reducer
 struct Settings {
     enum Alert: Equatable {
+        case confirmAccountDeletion
         case confirmSignOut
     }
 
@@ -19,6 +20,8 @@ struct Settings {
     struct State: Equatable {
         @Presents var alert: AlertState<Settings.Alert>?
         let appVersion: String
+        var hasDeletedEntries = false
+        var isDeletingAccount = false
         var user: User
 
         init(user: User) {
@@ -29,18 +32,66 @@ struct Settings {
     }
 
     enum Action {
+        case accountDeletionFailed(any Error)
         case alert(PresentationAction<Alert>)
+        case delegate(Delegate)
+        case deleteAccountButtonTapped
         case dismissButtonTapped
+        case entriesDeleted
         case signOutButtonTapped
         case signOutFailed(any Error)
+
+        @CasePathable
+        enum Delegate {
+            case accountDeletion(AccountDeletionEvent)
+        }
+    }
+
+    enum AccountDeletionError: Error {
+        case missingAuthorizationCode
     }
 
     @Dependency(\.authClient) var authClient
     @Dependency(\.dismiss) var dismiss
+    @Dependency(\.entriesClient) var entriesClient
+    @Dependency(\.signInWithAppleClient) var signInWithAppleClient
 
     var body: some Reducer<State, Action> {
         Reduce { state, action in
             switch action {
+            case .accountDeletionFailed(let error):
+                state.isDeletingAccount = false
+                if !error.isSignInWithAppleCancellation {
+                    reportIssue(error, "Account deletion failed.")
+                    state.alert = state.hasDeletedEntries ? .accountDeletionIncomplete : .accountDeletionFailed
+                }
+                return .send(.delegate(.accountDeletion(.ended)))
+
+            case .alert(.presented(.confirmAccountDeletion)):
+                state.isDeletingAccount = true
+                let uid = state.user.uid
+                return .merge(
+                    .send(.delegate(.accountDeletion(.started))),
+                    .run { send in
+                        do {
+                            // Entries must go while signed in; account deletion tears the app down, so it goes last
+                            let credential = try await signInWithAppleClient.requestCredential()
+                            guard let authorizationCode = credential.authorizationCode else {
+                                throw AccountDeletionError.missingAuthorizationCode
+                            }
+                            await send(.delegate(.accountDeletion(.confirmed)))
+                            // No timeout: these calls ignore cancellation, and racing a deadline risks a false failure
+                            try await authClient.reauthenticate(credential: credential)
+                            try await entriesClient.deleteAll(uid: uid)
+                            await send(.entriesDeleted)
+                            try await authClient.revokeAppleToken(authorizationCode: authorizationCode)
+                            try await authClient.deleteAccount()
+                        } catch {
+                            await send(.accountDeletionFailed(error))
+                        }
+                    }
+                )
+
             case .alert(.presented(.confirmSignOut)):
                 return .run { _ in
                     try await authClient.signOut()
@@ -51,10 +102,27 @@ struct Settings {
             case .alert:
                 return .none
 
+            case .delegate:
+                return .none
+
+            case .deleteAccountButtonTapped:
+                guard !state.isDeletingAccount else { return .none }
+                state.alert = .confirmAccountDeletion
+                return .none
+
             case .dismissButtonTapped:
+                // Dismissing mid-deletion would tear down this feature and cancel the deletion effect
+                guard !state.isDeletingAccount else { return .none }
                 return .run { _ in await dismiss() }
 
+            // Record that entries were wiped, so a later failure can explain the partial deletion
+            case .entriesDeleted:
+                state.hasDeletedEntries = true
+                return .none
+
             case .signOutButtonTapped:
+                // Signing out mid-deletion would cancel the deletion effect between its steps
+                guard !state.isDeletingAccount else { return .none }
                 state.alert = .confirmSignOut
                 return .none
 
@@ -69,6 +137,33 @@ struct Settings {
 }
 
 extension AlertState where Action == Settings.Alert {
+    static let accountDeletionFailed = AlertState {
+        TextState("Couldn't Delete Account")
+    } message: {
+        TextState("Something went wrong while deleting your account. Please try again.")
+    }
+
+    static let accountDeletionIncomplete = AlertState {
+        TextState("Account Not Deleted")
+    } message: {
+        TextState(
+            "Your entries were deleted, but the account was not. Please try again to finish deleting your account."
+        )
+    }
+
+    static let confirmAccountDeletion = AlertState {
+        TextState("Delete Account")
+    } actions: {
+        ButtonState(role: .destructive, action: .confirmAccountDeletion) {
+            TextState("Delete")
+        }
+        ButtonState(role: .cancel) {
+            TextState("Cancel")
+        }
+    } message: {
+        TextState("Are you sure you want to delete your account?")
+    }
+
     static let confirmSignOut = AlertState {
         TextState("Sign Out")
     } actions: {

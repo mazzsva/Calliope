@@ -24,7 +24,11 @@ struct SettingsView: View {
                     Button("Sign Out") {
                         store.send(.signOutButtonTapped)
                     }
+                    Button("Delete Account", role: .destructive) {
+                        store.send(.deleteAccountButtonTapped)
+                    }
                 }
+                .disabled(store.isDeletingAccount)
             }
             // A back button otherwise appears at this stack's root
             .navigationBarBackButtonHidden()
@@ -46,6 +50,7 @@ struct SettingsView: View {
                     }
                     .foregroundStyle(.secondary)
                     .labelStyle(.iconOnly)
+                    .disabled(store.isDeletingAccount)
                 }
             }
             .alert($store.scope(state: \.alert, action: \.alert))
@@ -57,6 +62,7 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.bottom)
         }
+        .interactiveDismissDisabled(store.isDeletingAccount)
     }
 }
 
