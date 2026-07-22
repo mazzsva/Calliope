@@ -7,6 +7,7 @@
 
 import ComposableArchitecture
 import Foundation
+import IssueReporting
 
 @Reducer
 struct Settings {
@@ -31,6 +32,7 @@ struct Settings {
         case alert(PresentationAction<Alert>)
         case dismissButtonTapped
         case signOutButtonTapped
+        case signOutFailed(any Error)
     }
 
     @Dependency(\.authClient) var authClient
@@ -42,6 +44,8 @@ struct Settings {
             case .alert(.presented(.confirmSignOut)):
                 return .run { _ in
                     try await authClient.signOut()
+                } catch: { error, send in
+                    await send(.signOutFailed(error))
                 }
 
             case .alert:
@@ -52,6 +56,11 @@ struct Settings {
 
             case .signOutButtonTapped:
                 state.alert = .confirmSignOut
+                return .none
+
+            case .signOutFailed(let error):
+                reportIssue(error, "Sign out failed.")
+                state.alert = .signOutFailed
                 return .none
             }
         }
@@ -71,5 +80,11 @@ extension AlertState where Action == Settings.Alert {
         }
     } message: {
         TextState("Are you sure you want to sign out?")
+    }
+
+    static let signOutFailed = AlertState {
+        TextState("Couldn't Sign Out")
+    } message: {
+        TextState("Something went wrong while signing out. Please try again.")
     }
 }
