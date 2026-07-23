@@ -31,6 +31,7 @@ struct Home {
         // Assume syncing until a server-confirmed snapshot arrives
         var isSyncing = true
 
+        var path = StackState<EntryDetail.State>()
         var searchText = ""
 
         var user: User
@@ -62,9 +63,11 @@ struct Home {
         case entriesResponse(EntriesSnapshot)
         case entriesRetryTimerElapsed
         case entriesStreamFailed
+        case entryDeleteFailed(Entry.ID, any Error)
         case entrySaveFailed(Entry.ID, any Error)
         case firstLoadTimedOut
         case newEntryButtonTapped
+        case path(StackAction<EntryDetail.State, EntryDetail.Action>)
         case settingsButtonTapped
         case task
         case userChanged(User)
@@ -116,7 +119,17 @@ struct Home {
             case .entriesResponse(let snapshot):
                 let isFirstLoad = state.entries == nil
                 state.isSyncing = snapshot.isFromCache || snapshot.hasPendingWrites
-                state.entries = IdentifiedArray(uniqueElements: snapshot.entries)
+                let entries = IdentifiedArray(uniqueElements: snapshot.entries)
+                state.entries = entries
+                // Keep pushed detail screens in sync with remote changes, popping any deleted entry
+                for id in Array(state.path.ids) {
+                    guard let entryID = state.path[id: id]?.entry.id else { continue }
+                    if let entry = entries[id: entryID] {
+                        state.path[id: id]?.entry = entry
+                    } else {
+                        state.path.pop(from: id)
+                    }
+                }
                 guard isFirstLoad else { return .none }
                 return firstLoadEnded()
 
@@ -137,6 +150,11 @@ struct Home {
                 state.entries = []
                 return .merge(retry, firstLoadEnded())
 
+            case .entryDeleteFailed(let id, let error):
+                reportIssue(error, "Failed to delete entry \(id).")
+                state.destination = .alert(.entryDeleteFailed)
+                return .none
+
             case .entrySaveFailed(let id, let error):
                 reportIssue(error, "Failed to save entry \(id).")
                 state.destination = .alert(.entrySaveFailed)
@@ -150,6 +168,19 @@ struct Home {
 
             case .newEntryButtonTapped:
                 state.destination = .createEntry(EntryForm.State(mode: .create))
+                return .none
+
+            case .path(.element(id: let id, action: .delegate(.didDelete(let entryID)))):
+                state.path.pop(from: id)
+                return .merge(
+                    .run { _ in await hapticsClient.warning() },
+                    delete(entryID, uid: state.user.uid)
+                )
+
+            case .path(.element(id: _, action: .delegate(.didUpdate(let entry)))):
+                return save(entry, uid: state.user.uid)
+
+            case .path:
                 return .none
 
             case .settingsButtonTapped:
@@ -179,6 +210,17 @@ struct Home {
             }
         }
         .ifLet(\.$destination, action: \.destination)
+        .forEach(\.path, action: \.path) {
+            EntryDetail()
+        }
+    }
+
+    private func delete(_ id: Entry.ID, uid: String) -> Effect<Action> {
+        .run { _ in
+            try await entriesClient.delete(id: id, uid: uid)
+        } catch: { error, send in
+            await send(.entryDeleteFailed(id, error))
+        }
     }
 
     private func firstLoadEnded() -> Effect<Action> {
@@ -222,6 +264,12 @@ struct Home {
 extension Home.Destination.State: Equatable {}
 
 extension AlertState where Action == Never {
+    static let entryDeleteFailed = AlertState {
+        TextState("Couldn't Delete Entry")
+    } message: {
+        TextState("Something went wrong while deleting your entry. Please try again.")
+    }
+
     static let entrySaveFailed = AlertState {
         TextState("Couldn't Save Entry")
     } message: {

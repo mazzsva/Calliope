@@ -13,12 +13,15 @@ struct HomeView: View {
     @Namespace private var namespace
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
             ScrollView {
                 GlassEffectContainer(spacing: 16) {
                     LazyVStack(spacing: 16) {
                         ForEach(store.filteredEntries) { entry in
-                            EntryCardView(entry: entry)
+                            NavigationLink(state: EntryDetail.State(entry: entry)) {
+                                EntryCardView(entry: entry)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -65,6 +68,8 @@ struct HomeView: View {
                     ContentUnavailableView.search(text: store.searchText)
                 }
             }
+        } destination: { detailStore in
+            EntryDetailView(store: detailStore)
         }
         .task { await store.send(.task).finish() }
         .alert($store.scope(state: \.destination?.alert, action: \.destination.alert))
