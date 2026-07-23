@@ -34,15 +34,19 @@ struct Home {
         var path = StackState<EntryDetail.State>()
         var searchText = ""
 
+        // Distinguishes a brand-new sign-in from a restored session
+        let sessionOrigin: SessionOrigin
+
         var user: User
 
-        init(user: User) {
-            self.user = user
+        enum SessionOrigin: Equatable {
+            case freshSignIn(isNewAccount: Bool)
+            case restored
         }
 
-        var syncStatus: SyncStatus {
-            guard isOnline else { return .offline }
-            return isSyncing ? .syncing : .synced
+        init(user: User, sessionOrigin: SessionOrigin = .restored) {
+            self.sessionOrigin = sessionOrigin
+            self.user = user
         }
 
         var filteredEntries: IdentifiedArrayOf<Entry> {
@@ -53,9 +57,20 @@ struct Home {
                     || entry.definition.localizedStandardContains(searchText)
             }
         }
+
+        var isFreshSignIn: Bool {
+            if case .freshSignIn = sessionOrigin { return true }
+            return false
+        }
+
+        var syncStatus: SyncStatus {
+            guard isOnline else { return .offline }
+            return isSyncing ? .syncing : .synced
+        }
     }
 
     enum Action: BindableAction {
+        case appBecameActive
         case binding(BindingAction<State>)
         case connectivityChanged(Bool)
         case delegate(Delegate)
@@ -93,6 +108,10 @@ struct Home {
         BindingReducer()
         Reduce { state, action in
             switch action {
+            // Restart the entries stream in case it went stale while backgrounded
+            case .appBecameActive:
+                return subscribeToEntries(state)
+
             case .binding:
                 return .none
 
@@ -118,6 +137,10 @@ struct Home {
 
             case .entriesResponse(let snapshot):
                 let isFirstLoad = state.entries == nil
+                // A fresh sign-in's first cached snapshot is empty, so wait for the server before showing anything
+                if isFirstLoad, state.isFreshSignIn, snapshot.isFromCache, snapshot.entries.isEmpty {
+                    return .none
+                }
                 state.isSyncing = snapshot.isFromCache || snapshot.hasPendingWrites
                 let entries = IdentifiedArray(uniqueElements: snapshot.entries)
                 state.entries = entries
@@ -131,7 +154,7 @@ struct Home {
                     }
                 }
                 guard isFirstLoad else { return .none }
-                return firstLoadEnded()
+                return firstLoadEnded(state)
 
             case .entriesRetryTimerElapsed:
                 return subscribeToEntries(state)
@@ -148,7 +171,7 @@ struct Home {
                     .cancellable(id: CancelID.entriesSubscription, cancelInFlight: true)
                 guard state.entries == nil else { return retry }
                 state.entries = []
-                return .merge(retry, firstLoadEnded())
+                return .merge(retry, firstLoadEnded(state))
 
             case .entryDeleteFailed(let id, let error):
                 reportIssue(error, "Failed to delete entry \(id).")
@@ -164,7 +187,7 @@ struct Home {
                 guard state.entries == nil else { return .none }
                 reportIssue("First entries snapshot didn't arrive within 10 seconds; showing an empty list.")
                 state.entries = []
-                return firstLoadEnded()
+                return firstLoadEnded(state)
 
             case .newEntryButtonTapped:
                 state.destination = .createEntry(EntryForm.State(mode: .create))
@@ -223,8 +246,11 @@ struct Home {
         }
     }
 
-    private func firstLoadEnded() -> Effect<Action> {
-        .cancel(id: CancelID.firstLoadTimeout)
+    private func firstLoadEnded(_ state: State) -> Effect<Action> {
+        .merge(
+            .cancel(id: CancelID.firstLoadTimeout),
+            state.isFreshSignIn ? .run { _ in await hapticsClient.success() } : .none
+        )
     }
 
     private func save(_ entry: Entry, uid: String) -> Effect<Action> {
