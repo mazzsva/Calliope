@@ -10,6 +10,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Bindable var store: StoreOf<Home>
+    @Namespace private var namespace
 
     var body: some View {
         NavigationStack {
@@ -38,6 +39,12 @@ struct HomeView: View {
                         SyncStatusLabel(status: store.syncStatus, entryCount: store.entries?.count ?? 0)
                     }
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Settings", systemImage: "gear") {
+                        store.send(.settingsButtonTapped)
+                    }
+                    .matchedTransitionSource(id: "settings", in: namespace)
+                }
                 DefaultToolbarItem(kind: .search, placement: .bottomBar)
                 ToolbarSpacer(placement: .bottomBar)
                 ToolbarItem(placement: .bottomBar) {
@@ -65,6 +72,12 @@ struct HomeView: View {
             item: $store.scope(state: \.destination?.createEntry, action: \.destination.createEntry)
         ) { formStore in
             EntryFormView(store: formStore)
+        }
+        .sheet(
+            item: $store.scope(state: \.destination?.settings, action: \.destination.settings)
+        ) { settingsStore in
+            SettingsView(store: settingsStore)
+                .navigationTransition(.zoom(sourceID: "settings", in: namespace))
         }
     }
 }

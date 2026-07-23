@@ -16,6 +16,7 @@ struct Home {
         // Failure alerts are for real rejections only; Firestore queues offline writes silently
         case alert(AlertState<Never>)
         case createEntry(EntryForm)
+        case settings(Settings)
     }
 
     @ObservableState
@@ -56,6 +57,7 @@ struct Home {
     enum Action: BindableAction {
         case binding(BindingAction<State>)
         case connectivityChanged(Bool)
+        case delegate(Delegate)
         case destination(PresentationAction<Destination.Action>)
         case entriesResponse(EntriesSnapshot)
         case entriesRetryTimerElapsed
@@ -63,7 +65,14 @@ struct Home {
         case entrySaveFailed(Entry.ID, any Error)
         case firstLoadTimedOut
         case newEntryButtonTapped
+        case settingsButtonTapped
         case task
+        case userChanged(User)
+
+        @CasePathable
+        enum Delegate {
+            case accountDeletion(AccountDeletionEvent)
+        }
     }
 
     enum CancelID {
@@ -88,12 +97,18 @@ struct Home {
                 state.isOnline = isOnline
                 return .none
 
+            case .delegate:
+                return .none
+
             case .destination(.presented(.createEntry(.delegate(.didSubmit(let entry))))):
                 state.destination = nil
                 return .merge(
                     .run { _ in await hapticsClient.success() },
                     save(entry, uid: state.user.uid)
                 )
+
+            case .destination(.presented(.settings(.delegate(.accountDeletion(let event))))):
+                return .send(.delegate(.accountDeletion(event)))
 
             case .destination:
                 return .none
@@ -137,6 +152,10 @@ struct Home {
                 state.destination = .createEntry(EntryForm.State(mode: .create))
                 return .none
 
+            case .settingsButtonTapped:
+                state.destination = .settings(Settings.State(user: state.user))
+                return .none
+
             case .task:
                 return .merge(
                     subscribeToEntries(state),
@@ -147,6 +166,16 @@ struct Home {
                     }
                     .cancellable(id: CancelID.connectivitySubscription, cancelInFlight: true)
                 )
+
+            case .userChanged(let user):
+                guard user.uid == state.user.uid else {
+                    // Account switched without a sign-out; the account-independent connectivity stream keeps running
+                    state = State(user: user)
+                    return subscribeToEntries(state)
+                }
+                state.user = user
+                state.destination?.modify(\.settings) { $0.user = user }
+                return .none
             }
         }
         .ifLet(\.$destination, action: \.destination)
