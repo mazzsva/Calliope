@@ -30,9 +30,12 @@ struct HomeView: View {
             .toolbarRole(.editor)
             .toolbar {
                 ToolbarItem(placement: .title) {
-                    Text("Calliope")
-                        .font(.title)
-                        .fontWeight(.bold)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Calliope")
+                            .font(.title)
+                            .fontWeight(.bold)
+                        SyncStatusLabel(status: store.syncStatus, entryCount: store.entries?.count ?? 0)
+                    }
                 }
             }
             .overlay {
@@ -65,6 +68,34 @@ struct HomeView: View {
             $0.entriesClient.entries = { _ in
                 AsyncThrowingStream { continuation in
                     continuation.yield(.empty)
+                }
+            }
+        }
+    )
+}
+
+#Preview("Syncing") {
+    HomeView(
+        store: Store(initialState: Home.State(user: .mock)) {
+            Home()
+        } withDependencies: {
+            $0.entriesClient.entries = { _ in
+                AsyncThrowingStream { continuation in
+                    continuation.yield(.syncing)
+                }
+            }
+        }
+    )
+}
+
+#Preview("Offline") {
+    HomeView(
+        store: Store(initialState: Home.State(user: .mock)) {
+            Home()
+        } withDependencies: {
+            $0.networkMonitorClient.connectivityChanges = {
+                AsyncStream { continuation in
+                    continuation.yield(false)
                 }
             }
         }

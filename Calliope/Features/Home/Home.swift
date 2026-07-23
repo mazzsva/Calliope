@@ -16,14 +16,25 @@ struct Home {
         // Nil until the first load settles, letting the UI tell loading from empty
         var entries: IdentifiedArrayOf<Entry>?
 
+        var isOnline = true
+
+        // Assume syncing until a server-confirmed snapshot arrives
+        var isSyncing = true
+
         var user: User
 
         init(user: User) {
             self.user = user
         }
+
+        var syncStatus: SyncStatus {
+            guard isOnline else { return .offline }
+            return isSyncing ? .syncing : .synced
+        }
     }
 
     enum Action {
+        case connectivityChanged(Bool)
         case entriesResponse(EntriesSnapshot)
         case entriesRetryTimerElapsed
         case entriesStreamFailed
@@ -32,18 +43,25 @@ struct Home {
     }
 
     enum CancelID {
+        case connectivitySubscription
         case entriesSubscription
         case firstLoadTimeout
     }
 
     @Dependency(\.continuousClock) var clock
     @Dependency(\.entriesClient) var entriesClient
+    @Dependency(\.networkMonitorClient) var networkMonitorClient
 
     var body: some Reducer<State, Action> {
         Reduce { state, action in
             switch action {
+            case .connectivityChanged(let isOnline):
+                state.isOnline = isOnline
+                return .none
+
             case .entriesResponse(let snapshot):
                 let isFirstLoad = state.entries == nil
+                state.isSyncing = snapshot.isFromCache || snapshot.hasPendingWrites
                 state.entries = IdentifiedArray(uniqueElements: snapshot.entries)
                 guard isFirstLoad else { return .none }
                 return firstLoadEnded()
@@ -53,6 +71,7 @@ struct Home {
 
             case .entriesStreamFailed:
                 // Firestore won't revive a failed listener, so surface the stall and retry after a pause
+                state.isSyncing = true
                 let retry: Effect<Action> =
                     .run { send in
                         try await clock.sleep(for: .seconds(5))
@@ -71,7 +90,15 @@ struct Home {
                 return firstLoadEnded()
 
             case .task:
-                return subscribeToEntries(state)
+                return .merge(
+                    subscribeToEntries(state),
+                    .run { send in
+                        for await isOnline in networkMonitorClient.connectivityChanges() {
+                            await send(.connectivityChanged(isOnline))
+                        }
+                    }
+                    .cancellable(id: CancelID.connectivitySubscription, cancelInFlight: true)
+                )
             }
         }
     }
