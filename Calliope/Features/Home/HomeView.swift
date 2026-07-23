@@ -39,6 +39,13 @@ struct HomeView: View {
                     }
                 }
                 DefaultToolbarItem(kind: .search, placement: .bottomBar)
+                ToolbarSpacer(placement: .bottomBar)
+                ToolbarItem(placement: .bottomBar) {
+                    Button("New Entry", systemImage: "plus") {
+                        store.send(.newEntryButtonTapped)
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
             }
             .overlay {
                 if store.entries?.isEmpty == true {
@@ -53,6 +60,12 @@ struct HomeView: View {
             }
         }
         .task { await store.send(.task).finish() }
+        .alert($store.scope(state: \.destination?.alert, action: \.destination.alert))
+        .sheet(
+            item: $store.scope(state: \.destination?.createEntry, action: \.destination.createEntry)
+        ) { formStore in
+            EntryFormView(store: formStore)
+        }
     }
 }
 

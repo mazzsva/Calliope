@@ -11,8 +11,17 @@ import IssueReporting
 
 @Reducer
 struct Home {
+    @Reducer
+    enum Destination {
+        // Failure alerts are for real rejections only; Firestore queues offline writes silently
+        case alert(AlertState<Never>)
+        case createEntry(EntryForm)
+    }
+
     @ObservableState
     struct State: Equatable {
+        @Presents var destination: Destination.State?
+
         // Nil until the first load settles, letting the UI tell loading from empty
         var entries: IdentifiedArrayOf<Entry>?
 
@@ -47,10 +56,13 @@ struct Home {
     enum Action: BindableAction {
         case binding(BindingAction<State>)
         case connectivityChanged(Bool)
+        case destination(PresentationAction<Destination.Action>)
         case entriesResponse(EntriesSnapshot)
         case entriesRetryTimerElapsed
         case entriesStreamFailed
+        case entrySaveFailed(Entry.ID, any Error)
         case firstLoadTimedOut
+        case newEntryButtonTapped
         case task
     }
 
@@ -62,6 +74,7 @@ struct Home {
 
     @Dependency(\.continuousClock) var clock
     @Dependency(\.entriesClient) var entriesClient
+    @Dependency(\.hapticsClient) var hapticsClient
     @Dependency(\.networkMonitorClient) var networkMonitorClient
 
     var body: some Reducer<State, Action> {
@@ -73,6 +86,16 @@ struct Home {
 
             case .connectivityChanged(let isOnline):
                 state.isOnline = isOnline
+                return .none
+
+            case .destination(.presented(.createEntry(.delegate(.didSubmit(let entry))))):
+                state.destination = nil
+                return .merge(
+                    .run { _ in await hapticsClient.success() },
+                    save(entry, uid: state.user.uid)
+                )
+
+            case .destination:
                 return .none
 
             case .entriesResponse(let snapshot):
@@ -99,11 +122,20 @@ struct Home {
                 state.entries = []
                 return .merge(retry, firstLoadEnded())
 
+            case .entrySaveFailed(let id, let error):
+                reportIssue(error, "Failed to save entry \(id).")
+                state.destination = .alert(.entrySaveFailed)
+                return .none
+
             case .firstLoadTimedOut:
                 guard state.entries == nil else { return .none }
                 reportIssue("First entries snapshot didn't arrive within 10 seconds; showing an empty list.")
                 state.entries = []
                 return firstLoadEnded()
+
+            case .newEntryButtonTapped:
+                state.destination = .createEntry(EntryForm.State(mode: .create))
+                return .none
 
             case .task:
                 return .merge(
@@ -117,10 +149,19 @@ struct Home {
                 )
             }
         }
+        .ifLet(\.$destination, action: \.destination)
     }
 
     private func firstLoadEnded() -> Effect<Action> {
         .cancel(id: CancelID.firstLoadTimeout)
+    }
+
+    private func save(_ entry: Entry, uid: String) -> Effect<Action> {
+        .run { _ in
+            try await entriesClient.save(entry: entry, uid: uid)
+        } catch: { error, send in
+            await send(.entrySaveFailed(entry.id, error))
+        }
     }
 
     private func subscribeToEntries(_ state: State) -> Effect<Action> {
@@ -146,5 +187,15 @@ struct Home {
                 .cancellable(id: CancelID.firstLoadTimeout, cancelInFlight: true)
                 : .none
         )
+    }
+}
+
+extension Home.Destination.State: Equatable {}
+
+extension AlertState where Action == Never {
+    static let entrySaveFailed = AlertState {
+        TextState("Couldn't Save Entry")
+    } message: {
+        TextState("Something went wrong while saving your entry. Please try again.")
     }
 }
