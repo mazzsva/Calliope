@@ -9,14 +9,14 @@ import ComposableArchitecture
 import SwiftUI
 
 struct HomeView: View {
-    let store: StoreOf<Home>
+    @Bindable var store: StoreOf<Home>
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 GlassEffectContainer(spacing: 16) {
                     LazyVStack(spacing: 16) {
-                        ForEach(store.entries ?? []) { entry in
+                        ForEach(store.filteredEntries) { entry in
                             EntryCardView(entry: entry)
                         }
                     }
@@ -26,6 +26,7 @@ struct HomeView: View {
             }
             .scrollIndicators(.hidden)
             .groupedBackground()
+            .searchable(text: $store.searchText)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarRole(.editor)
             .toolbar {
@@ -37,6 +38,7 @@ struct HomeView: View {
                         SyncStatusLabel(status: store.syncStatus, entryCount: store.entries?.count ?? 0)
                     }
                 }
+                DefaultToolbarItem(kind: .search, placement: .bottomBar)
             }
             .overlay {
                 if store.entries?.isEmpty == true {
@@ -45,6 +47,8 @@ struct HomeView: View {
                         systemImage: "tray.fill",
                         description: Text("Tap the plus button to add an entry.")
                     )
+                } else if store.entries != nil, store.filteredEntries.isEmpty {
+                    ContentUnavailableView.search(text: store.searchText)
                 }
             }
         }

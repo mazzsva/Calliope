@@ -21,6 +21,8 @@ struct Home {
         // Assume syncing until a server-confirmed snapshot arrives
         var isSyncing = true
 
+        var searchText = ""
+
         var user: User
 
         init(user: User) {
@@ -31,9 +33,19 @@ struct Home {
             guard isOnline else { return .offline }
             return isSyncing ? .syncing : .synced
         }
+
+        var filteredEntries: IdentifiedArrayOf<Entry> {
+            guard let entries else { return [] }
+            guard !searchText.isEmpty else { return entries }
+            return entries.filter { entry in
+                entry.term.localizedStandardContains(searchText)
+                    || entry.definition.localizedStandardContains(searchText)
+            }
+        }
     }
 
-    enum Action {
+    enum Action: BindableAction {
+        case binding(BindingAction<State>)
         case connectivityChanged(Bool)
         case entriesResponse(EntriesSnapshot)
         case entriesRetryTimerElapsed
@@ -53,8 +65,12 @@ struct Home {
     @Dependency(\.networkMonitorClient) var networkMonitorClient
 
     var body: some Reducer<State, Action> {
+        BindingReducer()
         Reduce { state, action in
             switch action {
+            case .binding:
+                return .none
+
             case .connectivityChanged(let isOnline):
                 state.isOnline = isOnline
                 return .none
