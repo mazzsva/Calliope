@@ -25,6 +25,7 @@ struct Home {
 
     enum Action {
         case entriesResponse(EntriesSnapshot)
+        case entriesRetryTimerElapsed
         case entriesStreamFailed
         case firstLoadTimedOut
         case task
@@ -47,10 +48,21 @@ struct Home {
                 guard isFirstLoad else { return .none }
                 return firstLoadEnded()
 
+            case .entriesRetryTimerElapsed:
+                return subscribeToEntries(state)
+
             case .entriesStreamFailed:
-                guard state.entries == nil else { return .none }
+                // Firestore won't revive a failed listener, so surface the stall and retry after a pause
+                let retry: Effect<Action> =
+                    .run { send in
+                        try await clock.sleep(for: .seconds(5))
+                        await send(.entriesRetryTimerElapsed)
+                    }
+                    // Reuses the subscription's id so a restart from foregrounding supersedes a pending retry
+                    .cancellable(id: CancelID.entriesSubscription, cancelInFlight: true)
+                guard state.entries == nil else { return retry }
                 state.entries = []
-                return firstLoadEnded()
+                return .merge(retry, firstLoadEnded())
 
             case .firstLoadTimedOut:
                 guard state.entries == nil else { return .none }
