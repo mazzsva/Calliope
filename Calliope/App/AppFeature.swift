@@ -18,6 +18,8 @@ struct AppFeature {
 
     @ObservableState
     struct State: Equatable {
+        var isSignedOutSettling = false
+
         // Presented so a scene swap cancels the outgoing scene's effects
         @Presents var scene: Scene.State?
 
@@ -28,7 +30,7 @@ struct AppFeature {
             case .home(let home):
                 return home.entries == nil
             case .signIn(let signIn):
-                return signIn.isAuthenticating
+                return isSignedOutSettling || signIn.isAuthenticating
             }
         }
 
@@ -55,15 +57,18 @@ struct AppFeature {
         case authResolutionTimedOut
         case authUserChanged(User?)
         case scene(PresentationAction<Scene.Action>)
+        case signedOutSettleEnded
         case task
     }
 
     enum CancelID {
         case authResolutionTimeout
+        case signedOutSettle
     }
 
     @Dependency(\.authClient) var authClient
     @Dependency(\.continuousClock) var clock
+    @Dependency(\.entriesClient) var entriesClient
 
     var body: some Reducer<State, Action> {
         Reduce { state, action in
@@ -81,6 +86,10 @@ struct AppFeature {
                 )
 
             case .scene:
+                return .none
+
+            case .signedOutSettleEnded:
+                state.isSignedOutSettling = false
                 return .none
 
             case .task:
@@ -140,8 +149,22 @@ struct AppFeature {
             return .send(.scene(.presented(.home(.userChanged(user)))))
 
         case (.home, nil):
+            // Briefly hold the loading screen to smooth the transition back to sign-in
+            state.isSignedOutSettling = true
             state.scene = .signIn(SignIn.State())
-            return .none
+            return .merge(
+                // Drop the signed-out user's cached entries so they can't linger on a shared device
+                .run { _ in
+                    try await entriesClient.clearLocalData()
+                } catch: { error, _ in
+                    reportIssue(error, "Clearing the local entries data after sign out failed.")
+                },
+                .run { send in
+                    try await clock.sleep(for: .milliseconds(500))
+                    await send(.signedOutSettleEnded)
+                }
+                .cancellable(id: CancelID.signedOutSettle, cancelInFlight: true)
+            )
         }
     }
 }
