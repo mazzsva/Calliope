@@ -7,6 +7,7 @@
 
 import ComposableArchitecture
 import IssueReporting
+import os
 
 @Reducer
 struct AppFeature {
@@ -64,6 +65,8 @@ struct AppFeature {
     }
 
     enum Action {
+        case appBecameActive
+        case appleCredentialRevoked
         case authResolutionTimedOut
         case authUserChanged(User?)
         case scene(PresentationAction<Scene.Action>)
@@ -72,6 +75,7 @@ struct AppFeature {
     }
 
     enum CancelID {
+        case appleCredentialCheck
         case authResolutionTimeout
         case signedOutSettle
     }
@@ -79,10 +83,25 @@ struct AppFeature {
     @Dependency(\.authClient) var authClient
     @Dependency(\.continuousClock) var clock
     @Dependency(\.entriesClient) var entriesClient
+    @Dependency(\.signInWithAppleClient) var signInWithAppleClient
 
     var body: some Reducer<State, Action> {
         Reduce { state, action in
             switch action {
+            case .appBecameActive:
+                guard case .home = state.scene, !state.isDeletingAccount else { return .none }
+                return verifyAppleCredential()
+
+            case .appleCredentialRevoked:
+                // Account deletion revokes the token itself; the foreground re-check backstops anything skipped here
+                guard case .home = state.scene, !state.isDeletingAccount else { return .none }
+                logger.notice("Apple ID credential was revoked; signing out.")
+                return .run { _ in
+                    try await authClient.signOut()
+                } catch: { error, _ in
+                    reportIssue(error, "Sign out after Apple ID credential revocation failed.")
+                }
+
             case .authResolutionTimedOut:
                 guard state.scene == nil else { return .none }
                 reportIssue("Auth state didn't resolve within 10 seconds; falling back to the sign-in screen.")
@@ -121,6 +140,11 @@ struct AppFeature {
                         }
                     },
                     .run { send in
+                        for await _ in signInWithAppleClient.credentialRevocations() {
+                            await send(.appleCredentialRevoked)
+                        }
+                    },
+                    .run { send in
                         // The auth listener should fire immediately; this catches a stall stranding the loading screen
                         try await clock.sleep(for: .seconds(10))
                         await send(.authResolutionTimedOut)
@@ -140,7 +164,7 @@ struct AppFeature {
 
         case (nil, .some(let user)):
             state.scene = .home(Home.State(user: user))
-            return .none
+            return verifyAppleCredential()
 
         case (.signIn(let signIn), .some(let user)):
             // A fresh sign-in was just authorized, so skip the redundant credential check
@@ -153,7 +177,7 @@ struct AppFeature {
                         : .restored
                 )
             )
-            return .none
+            return isFreshSignIn ? .none : verifyAppleCredential()
 
         case (.signIn, nil):
             return .none
@@ -168,7 +192,10 @@ struct AppFeature {
         case (.home, .some(let user)):
             // A different account appeared without an intermediate sign-out; home restarts itself as a fresh session
             state.accountDeletionPhase = nil
-            return .send(.scene(.presented(.home(.userChanged(user)))))
+            return .merge(
+                .send(.scene(.presented(.home(.userChanged(user))))),
+                verifyAppleCredential()
+            )
 
         case (.home, nil):
             state.accountDeletionPhase = nil
@@ -190,6 +217,28 @@ struct AppFeature {
             )
         }
     }
+
+    private func verifyAppleCredential() -> Effect<Action> {
+        .run { _ in
+            guard let appleUserID = authClient.appleUserID() else { return }
+            switch await signInWithAppleClient.credentialState(forUserID: appleUserID) {
+            case .authorized:
+                return
+            // Only a definitive revocation is trusted enough to end the session
+            case .indeterminate, .notFound:
+                logger.notice("Apple ID credential check found no definitive revocation; keeping the session.")
+            case .revoked:
+                logger.notice("Apple ID credential was revoked; signing out.")
+                try await authClient.signOut()
+            }
+        } catch: { error, _ in
+            reportIssue(error, "Sign out after Apple ID credential check failed.")
+        }
+        // Foregrounding and auth changes can overlap; collapse concurrent checks into the latest one
+        .cancellable(id: CancelID.appleCredentialCheck, cancelInFlight: true)
+    }
 }
 
 extension AppFeature.Scene.State: Equatable {}
+
+private let logger = Logger(category: "AppFeature")
