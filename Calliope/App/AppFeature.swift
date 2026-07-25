@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import IssueReporting
 
 @Reducer
 struct AppFeature {
@@ -51,28 +52,51 @@ struct AppFeature {
     }
 
     enum Action {
+        case authResolutionTimedOut
         case authUserChanged(User?)
         case scene(PresentationAction<Scene.Action>)
         case task
     }
 
+    enum CancelID {
+        case authResolutionTimeout
+    }
+
     @Dependency(\.authClient) var authClient
+    @Dependency(\.continuousClock) var clock
 
     var body: some Reducer<State, Action> {
         Reduce { state, action in
             switch action {
+            case .authResolutionTimedOut:
+                guard state.scene == nil else { return .none }
+                reportIssue("Auth state didn't resolve within 10 seconds; falling back to the sign-in screen.")
+                state.scene = .signIn(SignIn.State())
+                return .none
+
             case .authUserChanged(let user):
-                return resolveAuthChange(&state, user: user)
+                return .merge(
+                    .cancel(id: CancelID.authResolutionTimeout),
+                    resolveAuthChange(&state, user: user)
+                )
 
             case .scene:
                 return .none
 
             case .task:
-                return .run { send in
-                    for await user in authClient.authStateChanges() {
-                        await send(.authUserChanged(user))
+                return .merge(
+                    .run { send in
+                        for await user in authClient.authStateChanges() {
+                            await send(.authUserChanged(user))
+                        }
+                    },
+                    .run { send in
+                        // The auth listener should fire immediately; this catches a stall stranding the loading screen
+                        try await clock.sleep(for: .seconds(10))
+                        await send(.authResolutionTimedOut)
                     }
-                }
+                    .cancellable(id: CancelID.authResolutionTimeout)
+                )
             }
         }
         .ifLet(\.$scene, action: \.scene)
