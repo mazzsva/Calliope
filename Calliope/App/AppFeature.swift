@@ -18,17 +18,25 @@ struct AppFeature {
 
     @ObservableState
     struct State: Equatable {
+        var accountDeletionPhase: AccountDeletionPhase?
         var isSignedOutSettling = false
 
         // Presented so a scene swap cancels the outgoing scene's effects
         @Presents var scene: Scene.State?
+
+        enum AccountDeletionPhase: Equatable {
+            case deleting
+            case reauthenticating
+        }
+
+        var isDeletingAccount: Bool { accountDeletionPhase != nil }
 
         var isLoading: Bool {
             switch scene {
             case nil:
                 return true
             case .home(let home):
-                return home.entries == nil
+                return isDeletingAccount || home.entries == nil
             case .signIn(let signIn):
                 return isSignedOutSettling || signIn.isAuthenticating
             }
@@ -36,6 +44,8 @@ struct AppFeature {
 
         var loadingMessage: String? {
             switch scene {
+            case .home where accountDeletionPhase == .deleting:
+                return "Deleting your account…"
             case .home(let home) where home.entries == nil:
                 // A fresh sign-in's overlay stays up until the first snapshot, so hold its message too
                 guard case .freshSignIn(let isNewAccount) = home.sessionOrigin else { return nil }
@@ -84,6 +94,17 @@ struct AppFeature {
                     .cancel(id: CancelID.authResolutionTimeout),
                     resolveAuthChange(&state, user: user)
                 )
+
+            case .scene(.presented(.home(.delegate(.accountDeletion(let event))))):
+                switch event {
+                case .confirmed:
+                    state.accountDeletionPhase = .deleting
+                case .ended:
+                    state.accountDeletionPhase = nil
+                case .started:
+                    state.accountDeletionPhase = .reauthenticating
+                }
+                return .none
 
             case .scene:
                 return .none
@@ -146,9 +167,11 @@ struct AppFeature {
 
         case (.home, .some(let user)):
             // A different account appeared without an intermediate sign-out; home restarts itself as a fresh session
+            state.accountDeletionPhase = nil
             return .send(.scene(.presented(.home(.userChanged(user)))))
 
         case (.home, nil):
+            state.accountDeletionPhase = nil
             // Briefly hold the loading screen to smooth the transition back to sign-in
             state.isSignedOutSettling = true
             state.scene = .signIn(SignIn.State())
