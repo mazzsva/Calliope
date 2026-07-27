@@ -19,6 +19,7 @@ struct SettingsView: View {
                         Text("Email")
                         Text(store.user.email ?? "Unknown")
                             .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityElement(children: .combine)
