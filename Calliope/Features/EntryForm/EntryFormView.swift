@@ -17,7 +17,8 @@ struct EntryFormView: View {
         NavigationStack {
             Form {
                 Section("Term") {
-                    TextField("Term", text: $store.term)
+                    TextField("", text: $store.term)
+                        .accessibilityLabel("Term")
                         .focused($isTermFocused)
                 }
                 Section("Definition") {
