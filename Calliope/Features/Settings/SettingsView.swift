@@ -15,10 +15,13 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 Section {
-                    LabeledContent("Email") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Email")
                         Text(store.user.email ?? "Unknown")
                             .foregroundStyle(.secondary)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityElement(children: .combine)
                 }
                 Section {
                     Button("Sign Out") {
