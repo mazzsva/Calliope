@@ -65,7 +65,7 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.bottom)
         }
-        .interactiveDismissDisabled(store.isDeletingAccount)
+        .interactiveDismissDisabled()
     }
 }
 
