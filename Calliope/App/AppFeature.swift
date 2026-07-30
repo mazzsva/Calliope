@@ -22,7 +22,6 @@ struct AppFeature {
         var accountDeletionPhase: AccountDeletionPhase?
         var isSignedOutSettling = false
 
-        // Presented so a scene swap cancels the outgoing scene's effects
         @Presents var scene: Scene.State?
 
         enum AccountDeletionPhase: Equatable {
@@ -48,7 +47,6 @@ struct AppFeature {
             case .home where accountDeletionPhase == .deleting:
                 return "Deleting your account…"
             case .home(let home) where home.entries == nil:
-                // A fresh sign-in's overlay stays up until the first snapshot, so hold its message too
                 guard case .freshSignIn(let isNewAccount) = home.sessionOrigin else { return nil }
                 return Self.signInMessage(isCreatingAccount: isNewAccount)
             case .signIn(let signIn) where signIn.isSigningIn:
@@ -58,7 +56,6 @@ struct AppFeature {
             }
         }
 
-        // Shared so the text never changes as the scene swaps from sign-in to home
         private static func signInMessage(isCreatingAccount: Bool) -> String {
             isCreatingAccount ? "Creating your account…" : "Signing in…"
         }
@@ -93,7 +90,6 @@ struct AppFeature {
                 return verifyAppleCredential()
 
             case .appleCredentialRevoked:
-                // Account deletion revokes the token itself; the foreground re-check backstops anything skipped here
                 guard case .home = state.scene, !state.isDeletingAccount else { return .none }
                 logger.notice("Apple ID credential was revoked; signing out.")
                 return .run { _ in
@@ -145,7 +141,6 @@ struct AppFeature {
                         }
                     },
                     .run { send in
-                        // The auth listener should fire immediately; this catches a stall stranding the loading screen
                         try await clock.sleep(for: .seconds(10))
                         await send(.authResolutionTimedOut)
                     }
@@ -167,7 +162,6 @@ struct AppFeature {
             return verifyAppleCredential()
 
         case (.signIn(let signIn), .some(let user)):
-            // A fresh sign-in was just authorized, so skip the redundant credential check
             let isFreshSignIn = signIn.isAuthenticating
             state.scene = .home(
                 Home.State(
@@ -186,11 +180,9 @@ struct AppFeature {
             return .none
 
         case (.home(let home), .some(let user)) where home.user.uid == user.uid:
-            // Same account with updated profile fields, so home refreshes the user in place
             return .send(.scene(.presented(.home(.userChanged(user)))))
 
         case (.home, .some(let user)):
-            // A different account appeared without an intermediate sign-out; home restarts itself as a fresh session
             state.accountDeletionPhase = nil
             return .merge(
                 .send(.scene(.presented(.home(.userChanged(user))))),
@@ -199,11 +191,9 @@ struct AppFeature {
 
         case (.home, nil):
             state.accountDeletionPhase = nil
-            // Briefly hold the loading screen to smooth the transition back to sign-in
             state.isSignedOutSettling = true
             state.scene = .signIn(SignIn.State())
             return .merge(
-                // Drop the signed-out user's cached entries so they can't linger on a shared device
                 .run { _ in
                     try await entriesClient.clearLocalData()
                 } catch: { error, _ in
@@ -224,7 +214,6 @@ struct AppFeature {
             switch await signInWithAppleClient.credentialState(forUserID: appleUserID) {
             case .authorized:
                 return
-            // Only a definitive revocation is trusted enough to end the session
             case .indeterminate, .notFound:
                 logger.notice("Apple ID credential check found no definitive revocation; keeping the session.")
             case .revoked:
@@ -234,7 +223,6 @@ struct AppFeature {
         } catch: { error, _ in
             reportIssue(error, "Sign out after Apple ID credential check failed.")
         }
-        // Foregrounding and auth changes can overlap; collapse concurrent checks into the latest one
         .cancellable(id: CancelID.appleCredentialCheck, cancelInFlight: true)
     }
 }

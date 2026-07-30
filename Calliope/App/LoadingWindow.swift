@@ -24,7 +24,6 @@ private struct LoadingView: View {
                 ProgressView()
                     .controlSize(.large)
                 ZStack {
-                    // Reserve a line of height so the message fades in without resizing the layout
                     Text(" ")
                         .hidden()
                     if showsMessage, let message {
@@ -39,14 +38,12 @@ private struct LoadingView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 32)
-            // Anchor the content near the optical center, slightly above the true middle
             .padding(.top, proxy.size.height * 0.38)
             .animation(.easeInOut(duration: 0.25), value: showsMessage)
             .animation(.easeInOut(duration: 0.25), value: message)
         }
         .groupedBackground()
         .task {
-            // Delay the message so quick loads never flash text
             try? await Task.sleep(for: .seconds(0.5))
             showsMessage = true
         }
@@ -67,7 +64,6 @@ private struct LoadingWindow: UIViewRepresentable {
     }
 }
 
-// Reach the active window scene from the view hierarchy so the overlay can open its own window
 private final class LoadingWindowAnchor: UIView {
     var isLoadingVisible = false {
         didSet {
@@ -91,7 +87,6 @@ private final class LoadingWindowAnchor: UIView {
 
     private func update() {
         if isLoadingVisible {
-            // Showing again mid fade-out reuses the window and fades it back in
             if let loadingWindow {
                 loadingWindow.isUserInteractionEnabled = true
                 UIView.animate(withDuration: fadeDuration, delay: 0, options: .allowUserInteraction) {
@@ -102,7 +97,6 @@ private final class LoadingWindowAnchor: UIView {
             guard let windowScene = window?.windowScene else { return }
             let hostingController = UIHostingController(rootView: LoadingView(message: message))
             hostingController.view.backgroundColor = .clear
-            // A dedicated window above the app keeps the overlay on top of sheets and alerts
             let loadingWindow = UIWindow(windowScene: windowScene)
             loadingWindow.rootViewController = hostingController
             loadingWindow.backgroundColor = .clear
@@ -111,18 +105,15 @@ private final class LoadingWindowAnchor: UIView {
             loadingWindow.isHidden = false
             self.hostingController = hostingController
             self.loadingWindow = loadingWindow
-            // Keep blocking touches while the fade-in runs
             UIView.animate(withDuration: fadeDuration, delay: 0, options: .allowUserInteraction) {
                 loadingWindow.alpha = 1
             }
         } else {
             guard let loadingWindow else { return }
-            // Give touches back to the app as soon as the dismissal starts
             loadingWindow.isUserInteractionEnabled = false
             UIView.animate(withDuration: fadeDuration) {
                 loadingWindow.alpha = 0
             } completion: { [weak self] _ in
-                // Loading may have restarted mid fade-out; the window is being reused then
                 guard let self, !isLoadingVisible else { return }
                 loadingWindow.isHidden = true
                 self.loadingWindow = nil

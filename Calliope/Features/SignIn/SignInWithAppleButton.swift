@@ -8,14 +8,12 @@
 import AuthenticationServices
 import SwiftUI
 
-// Apple's UIKit sign-in button wrapped for a plain tap action, since SwiftUI's bundles the authorization flow
 struct SignInWithAppleButton: View {
     let action: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        // The button's style is fixed at init, so rebuild it when the color scheme flips
         SignInWithAppleButtonRepresentable(style: colorScheme == .dark ? .white : .black, action: action)
             .clipShape(.capsule)
             .frame(height: 50)

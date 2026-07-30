@@ -25,7 +25,6 @@ struct SignIn {
 
         var isCreatingAccount: Bool { step == .signingIn(isNewAccount: true) }
 
-        // True once the user has authorized; the loading label waits for this so it never shows behind the Apple sheet
         var isSigningIn: Bool {
             if case .signingIn = step { return true }
             return false
@@ -51,7 +50,6 @@ struct SignIn {
                 return .none
 
             case .authorizationResponse(.success(let credential)):
-                // Drives only the loading copy, so Apple's first-authorization heuristic is accurate enough
                 state.step = .signingIn(isNewAccount: credential.isFirstAuthorization)
                 return .run { send in
                     await send(.signInResponse(Result { try await authClient.signIn(credential: credential) }))
@@ -72,7 +70,6 @@ struct SignIn {
                     await send(.authorizationResponse(Result { try await signInWithAppleClient.requestCredential() }))
                 }
 
-            // Keep the signing-in step until the auth listener's scene swap, which also cancels this stall-guard timer
             case .signInResponse(.success):
                 return .run { send in
                     try await clock.sleep(for: .seconds(15))
@@ -80,7 +77,6 @@ struct SignIn {
                 }
 
             case .signInResponse(.failure(let error)):
-                // A cancellation can't reach here; the Apple sheet is already dismissed, so any failure is real
                 state.step = nil
                 reportIssue(error, "Sign in failed.")
                 state.alert = .signInFailed

@@ -10,7 +10,6 @@ import Foundation
 
 @Reducer
 struct EntryForm {
-    // Kept under the Firestore rules limits; counted in UTF-8 bytes, which bounds any unit the rules measure
     static let maxDefinitionUTF8Count = 40_000
     static let maxTermUTF8Count = 800
 
@@ -115,7 +114,6 @@ struct EntryForm {
 }
 
 extension String {
-    // Truncate on character boundaries so a multi-byte character is never split across the byte limit
     fileprivate func prefix(utf8Count: Int) -> Substring {
         guard utf8.count > utf8Count else { return self[...] }
         var count = 0

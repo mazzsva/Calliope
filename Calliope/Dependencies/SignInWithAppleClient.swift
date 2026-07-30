@@ -83,7 +83,6 @@ extension SignInWithAppleClient: DependencyKey {
                 }
             },
             requestCredential: {
-                // Apple signs a hash of the nonce; Firebase verifies it against the raw value
                 let rawNonce = randomNonce()
                 let authorization = try await performAuthorization(hashedNonce: sha256(rawNonce))
                 guard
@@ -97,7 +96,6 @@ extension SignInWithAppleClient: DependencyKey {
                     authorizationCode: credential.authorizationCode
                         .flatMap { String(data: $0, encoding: .utf8) },
                     idToken: idToken,
-                    // Apple only returns the email on the very first authorization
                     isFirstAuthorization: credential.email != nil,
                     rawNonce: rawNonce
                 )
@@ -161,7 +159,6 @@ private final class AuthorizationCoordinator: NSObject {
             let controller = ASAuthorizationController(authorizationRequests: [request])
             controller.delegate = self
             controller.presentationContextProvider = self
-            // Hold the controller so it isn't deallocated before its delegate callbacks fire
             self.controller = controller
             controller.performRequests()
         }
@@ -196,7 +193,6 @@ extension AuthorizationCoordinator: ASAuthorizationControllerDelegate {
 
 extension AuthorizationCoordinator: ASAuthorizationControllerPresentationContextProviding {
     nonisolated func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        // The system delivers this callback on the main thread despite the nonisolated signature
         MainActor.assumeIsolated {
             let windows = UIApplication.shared.connectedScenes
                 .compactMap { $0 as? UIWindowScene }

@@ -34,7 +34,6 @@ struct SettingsView: View {
                 }
                 .disabled(store.isDeletingAccount)
             }
-            // A back button otherwise appears at this stack's root
             .navigationBarBackButtonHidden()
             .scrollDisabled(true)
             .scrollContentBackground(.hidden)

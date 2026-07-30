@@ -13,7 +13,6 @@ import IssueReporting
 struct Home {
     @Reducer
     enum Destination {
-        // Failure alerts are for real rejections only; Firestore queues offline writes silently
         case alert(AlertState<Never>)
         case createEntry(EntryForm)
         case settings(Settings)
@@ -23,18 +22,15 @@ struct Home {
     struct State: Equatable {
         @Presents var destination: Destination.State?
 
-        // Nil until the first load settles, letting the UI tell loading from empty
         var entries: IdentifiedArrayOf<Entry>?
 
         var isOnline = true
 
-        // Assume syncing until a server-confirmed snapshot arrives
         var isSyncing = true
 
         var path = StackState<EntryDetail.State>()
         var searchText = ""
 
-        // Distinguishes a brand-new sign-in from a restored session
         let sessionOrigin: SessionOrigin
 
         var user: User
@@ -108,7 +104,6 @@ struct Home {
         BindingReducer()
         Reduce { state, action in
             switch action {
-            // Restart the entries stream in case it went stale while backgrounded
             case .appBecameActive:
                 return subscribeToEntries(state)
 
@@ -137,14 +132,12 @@ struct Home {
 
             case .entriesResponse(let snapshot):
                 let isFirstLoad = state.entries == nil
-                // A fresh sign-in's first cached snapshot is empty, so wait for the server before showing anything
                 if isFirstLoad, state.isFreshSignIn, snapshot.isFromCache, snapshot.entries.isEmpty {
                     return .none
                 }
                 state.isSyncing = snapshot.isFromCache || snapshot.hasPendingWrites
                 let entries = IdentifiedArray(uniqueElements: snapshot.entries)
                 state.entries = entries
-                // Keep pushed detail screens in sync with remote changes, popping any deleted entry
                 for id in Array(state.path.ids) {
                     guard let entryID = state.path[id: id]?.entry.id else { continue }
                     if let entry = entries[id: entryID] {
@@ -160,14 +153,12 @@ struct Home {
                 return subscribeToEntries(state)
 
             case .entriesStreamFailed:
-                // Firestore won't revive a failed listener, so surface the stall and retry after a pause
                 state.isSyncing = true
                 let retry: Effect<Action> =
                     .run { send in
                         try await clock.sleep(for: .seconds(5))
                         await send(.entriesRetryTimerElapsed)
                     }
-                    // Reuses the subscription's id so a restart from foregrounding supersedes a pending retry
                     .cancellable(id: CancelID.entriesSubscription, cancelInFlight: true)
                 guard state.entries == nil else { return retry }
                 state.entries = []
@@ -223,7 +214,6 @@ struct Home {
 
             case .userChanged(let user):
                 guard user.uid == state.user.uid else {
-                    // Account switched without a sign-out; the account-independent connectivity stream keeps running
                     state = State(user: user)
                     return subscribeToEntries(state)
                 }

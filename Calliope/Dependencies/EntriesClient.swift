@@ -41,7 +41,6 @@ extension EntriesClient: DependencyKey {
         EntriesClient(
             clearLocalData: {
                 let firestore = Firestore.firestore()
-                // Firestore requires termination before persistence can be cleared
                 try await firestore.terminate()
                 try await firestore.clearPersistence()
             },
@@ -49,7 +48,6 @@ extension EntriesClient: DependencyKey {
                 try await entriesCollection(uid: uid).document(id.uuidString).delete()
             },
             deleteAll: { uid in
-                // Firestore caps a write batch at 500 operations, so delete in pages
                 while true {
                     let snapshot = try await entriesCollection(uid: uid).limit(to: 500).getDocuments()
                     guard !snapshot.documents.isEmpty else { return }
@@ -64,7 +62,6 @@ extension EntriesClient: DependencyKey {
                 AsyncThrowingStream { continuation in
                     let listener = entriesCollection(uid: uid)
                         .order(by: "createdAt", descending: true)
-                        // Metadata-only changes must also fire, since sync status tracks cache state and pending writes
                         .addSnapshotListener(includeMetadataChanges: true) { snapshot, error in
                             if let error {
                                 continuation.finish(throwing: error)

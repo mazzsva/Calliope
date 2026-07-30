@@ -50,7 +50,6 @@ private final class FeedbackGenerators {
 
     func selectionChanged() {
         selection.selectionChanged()
-        // Re-prime the generator so the next feedback fires without latency
         selection.prepare()
     }
 

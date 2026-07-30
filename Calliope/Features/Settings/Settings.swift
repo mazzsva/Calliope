@@ -74,13 +74,11 @@ struct Settings {
                     .send(.delegate(.accountDeletion(.started))),
                     .run { send in
                         do {
-                            // Entries must go while signed in; account deletion tears the app down, so it goes last
                             let credential = try await signInWithAppleClient.requestCredential()
                             guard let authorizationCode = credential.authorizationCode else {
                                 throw AccountDeletionError.missingAuthorizationCode
                             }
                             await send(.delegate(.accountDeletion(.confirmed)))
-                            // No timeout: these calls ignore cancellation, and racing a deadline risks a false failure
                             try await authClient.reauthenticate(credential: credential)
                             try await entriesClient.deleteAll(uid: uid)
                             await send(.entriesDeleted)
@@ -111,17 +109,14 @@ struct Settings {
                 return .none
 
             case .dismissButtonTapped:
-                // Dismissing mid-deletion would tear down this feature and cancel the deletion effect
                 guard !state.isDeletingAccount else { return .none }
                 return .run { _ in await dismiss() }
 
-            // Record that entries were wiped, so a later failure can explain the partial deletion
             case .entriesDeleted:
                 state.hasDeletedEntries = true
                 return .none
 
             case .signOutButtonTapped:
-                // Signing out mid-deletion would cancel the deletion effect between its steps
                 guard !state.isDeletingAccount else { return .none }
                 state.alert = .confirmSignOut
                 return .none

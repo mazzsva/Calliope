@@ -24,7 +24,6 @@ extension AuthClient: DependencyKey {
     static var liveValue: AuthClient {
         AuthClient(
             appleUserID: {
-                // Apple's own user id lives in the provider data, distinct from Firebase's uid
                 Auth.auth().currentUser?.providerData
                     .first { $0.providerID == AuthProviderID.apple.rawValue }?
                     .uid

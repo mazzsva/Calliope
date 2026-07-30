@@ -36,7 +36,6 @@ struct EntryCardView: View {
                 Image(systemName: entry.isBookmarked ? "bookmark.fill" : "bookmark")
                     .font(.caption)
                     .foregroundStyle(entry.isBookmarked ? .bookmark : .secondary)
-                    // Hidden from VoiceOver unless bookmarked, so the fixed label is only read when true
                     .accessibilityLabel("Bookmarked")
                     .accessibilityHidden(!entry.isBookmarked)
             }

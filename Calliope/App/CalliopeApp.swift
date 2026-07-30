@@ -19,7 +19,6 @@ struct CalliopeApp: App {
 
     init() {
         #if !DEBUG
-        // Release builds log reported issues instead of raising runtime warnings
         IssueReporters.current = [LoggingIssueReporter()]
         #endif
         FirebaseApp.configure()
@@ -27,7 +26,6 @@ struct CalliopeApp: App {
 
     var body: some Scene {
         WindowGroup {
-            // Don't run the live app while tests execute in this host
             if !isTesting {
                 AppView(store: Self.store)
             }
