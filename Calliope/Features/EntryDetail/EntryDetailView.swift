@@ -44,7 +44,6 @@ struct EntryDetailView: View {
                     Image(systemName: store.entry.isBookmarked ? "bookmark.fill" : "bookmark")
                 }
                 .tint(store.entry.isBookmarked ? .bookmark : .secondary)
-                .accessibilityLabel(store.entry.isBookmarked ? "Remove Bookmark" : "Add Bookmark")
             }
             ToolbarItem(placement: .bottomBar) {
                 Button("Delete Entry", role: .destructive) {

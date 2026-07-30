@@ -22,7 +22,6 @@ struct SettingsView: View {
                             .textSelection(.enabled)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityElement(children: .combine)
                 }
                 Section {
                     Button("Sign Out") {

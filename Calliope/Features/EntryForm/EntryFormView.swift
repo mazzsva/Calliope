@@ -18,12 +18,10 @@ struct EntryFormView: View {
             Form {
                 Section("Term") {
                     TextField("", text: $store.term)
-                        .accessibilityLabel("Term")
                         .focused($isTermFocused)
                 }
                 Section("Definition") {
                     TextEditor(text: $store.definition)
-                        .accessibilityLabel("Definition")
                         .frame(minHeight: 180)
                 }
             }

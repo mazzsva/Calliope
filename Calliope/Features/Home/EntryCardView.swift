@@ -36,8 +36,6 @@ struct EntryCardView: View {
                 Image(systemName: entry.isBookmarked ? "bookmark.fill" : "bookmark")
                     .font(.caption)
                     .foregroundStyle(entry.isBookmarked ? .bookmark : .secondary)
-                    .accessibilityLabel("Bookmarked")
-                    .accessibilityHidden(!entry.isBookmarked)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
