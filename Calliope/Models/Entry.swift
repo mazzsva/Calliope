@@ -32,8 +32,8 @@ extension Entry {
         .unbookmarkedMock,
         Entry(
             id: UUID(2),
-            term: "Serendipity",
-            definition: "Finding something good without looking for it.",
+            term: "Low-hanging fruit",
+            definition: "The easiest wins, taken first.",
             isBookmarked: false,
             createdAt: Date(timeIntervalSince1970: 1_748_000_000),
             updatedAt: Date(timeIntervalSince1970: 1_748_000_000)
@@ -42,8 +42,8 @@ extension Entry {
 
     static let unbookmarkedMock = Entry(
         id: UUID(1),
-        term: "Break the ice",
-        definition: "To do or say something to relieve initial tension.",
+        term: "Burn the candle at both ends",
+        definition: "To work early and late until you're exhausted.",
         isBookmarked: false,
         createdAt: Date(timeIntervalSince1970: 1_749_000_000),
         updatedAt: Date(timeIntervalSince1970: 1_749_000_000)
