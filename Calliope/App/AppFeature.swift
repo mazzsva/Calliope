@@ -47,7 +47,7 @@ struct AppFeature {
             case .home where accountDeletionPhase == .deleting:
                 return "Deleting your account…"
             case .home(let home) where home.entries == nil:
-                guard case .freshSignIn(let isNewAccount) = home.sessionOrigin else { return nil }
+                guard let isNewAccount = home.sessionOrigin.freshSignIn else { return nil }
                 return Self.signInMessage(isCreatingAccount: isNewAccount)
             case .signIn(let signIn) where signIn.isSigningIn:
                 return Self.signInMessage(isCreatingAccount: signIn.isCreatingAccount)
@@ -86,11 +86,11 @@ struct AppFeature {
         Reduce { state, action in
             switch action {
             case .appBecameActive:
-                guard case .home = state.scene, !state.isDeletingAccount else { return .none }
+                guard state.scene.is(\.home), !state.isDeletingAccount else { return .none }
                 return verifyAppleCredential()
 
             case .appleCredentialRevoked:
-                guard case .home = state.scene, !state.isDeletingAccount else { return .none }
+                guard state.scene.is(\.home), !state.isDeletingAccount else { return .none }
                 logger.notice("Apple ID credential was revoked; signing out.")
                 return .run { _ in
                     try await authClient.signOut()

@@ -35,6 +35,8 @@ struct Home {
 
         var user: User
 
+        @CasePathable
+        @dynamicMemberLookup
         enum SessionOrigin: Equatable {
             case freshSignIn(isNewAccount: Bool)
             case restored
@@ -54,10 +56,7 @@ struct Home {
             }
         }
 
-        var isFreshSignIn: Bool {
-            if case .freshSignIn = sessionOrigin { return true }
-            return false
-        }
+        var isFreshSignIn: Bool { sessionOrigin.is(\.freshSignIn) }
 
         var syncStatus: SyncStatus {
             guard isOnline else { return .offline }
@@ -78,7 +77,7 @@ struct Home {
         case entrySaveFailed(Entry.ID, any Error)
         case firstLoadTimedOut
         case newEntryButtonTapped
-        case path(StackAction<EntryDetail.State, EntryDetail.Action>)
+        case path(StackActionOf<EntryDetail>)
         case settingsButtonTapped
         case task
         case userChanged(User)
