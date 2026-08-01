@@ -23,12 +23,6 @@ struct Settings {
         var hasDeletedEntries = false
         var isDeletingAccount = false
         var user: User
-
-        init(user: User) {
-            @Dependency(\.appVersionClient) var appVersionClient
-            appVersion = appVersionClient.appVersion()
-            self.user = user
-        }
     }
 
     enum Action {
