@@ -60,7 +60,7 @@ extension EntriesClient: DependencyKey {
             },
             entries: { uid in
                 AsyncThrowingStream { continuation in
-                    let listener = entriesCollection(uid: uid)
+                    nonisolated(unsafe) let listener = entriesCollection(uid: uid)
                         .order(by: "createdAt", descending: true)
                         .addSnapshotListener(includeMetadataChanges: true) { snapshot, error in
                             if let error {

@@ -48,7 +48,7 @@ extension SignInWithAppleClient: DependencyKey {
         SignInWithAppleClient(
             credentialRevocations: {
                 AsyncStream { continuation in
-                    let observer = NotificationCenter.default.addObserver(
+                    nonisolated(unsafe) let observer = NotificationCenter.default.addObserver(
                         forName: ASAuthorizationAppleIDProvider.credentialRevokedNotification,
                         object: nil,
                         queue: nil
