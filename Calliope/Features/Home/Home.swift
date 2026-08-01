@@ -220,7 +220,9 @@ struct Home {
                     return subscribeToEntries(state)
                 }
                 state.user = user
-                state.destination?.modify(\.settings) { $0.user = user }
+                if state.destination.is(\.settings) {
+                    state.destination?.modify(\.settings) { $0.user = user }
+                }
                 return .none
             }
         }
