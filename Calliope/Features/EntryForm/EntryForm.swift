@@ -13,6 +13,7 @@ struct EntryForm {
     static let maxDefinitionUTF8Count = 40_000
     static let maxTermUTF8Count = 800
 
+    @CasePathable
     enum Mode: Equatable {
         case create
         case edit(Entry)
@@ -37,7 +38,7 @@ struct EntryForm {
         }
 
         var isCreating: Bool {
-            mode == .create
+            mode.is(\.create)
         }
 
         var isSubmittable: Bool {
