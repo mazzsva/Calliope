@@ -32,6 +32,7 @@ struct Settings {
     }
 
     enum Action {
+        case accountDeletionConfirmed
         case accountDeletionFailed(any Error)
         case alert(PresentationAction<Alert>)
         case delegate(Delegate)
@@ -49,9 +50,15 @@ struct Settings {
 
     enum AccountDeletionError: Error {
         case missingAuthorizationCode
+        case timedOut
+    }
+
+    enum CancelID {
+        case accountDeletion
     }
 
     @Dependency(\.authClient) var authClient
+    @Dependency(\.continuousClock) var clock
     @Dependency(\.dismiss) var dismiss
     @Dependency(\.entriesClient) var entriesClient
     @Dependency(\.signInWithAppleClient) var signInWithAppleClient
@@ -59,13 +66,26 @@ struct Settings {
     var body: some Reducer<State, Action> {
         Reduce { state, action in
             switch action {
+            case .accountDeletionConfirmed:
+                return .merge(
+                    .send(.delegate(.accountDeletion(.confirmed))),
+                    .run { send in
+                        try await clock.sleep(for: .seconds(60))
+                        await send(.accountDeletionFailed(AccountDeletionError.timedOut))
+                    }
+                    .cancellable(id: CancelID.accountDeletion)
+                )
+
             case .accountDeletionFailed(let error):
                 state.isDeletingAccount = false
                 if !error.isSignInWithAppleCancellation {
                     reportIssue(error, "Account deletion failed.")
                     state.alert = state.hasDeletedEntries ? .accountDeletionIncomplete : .accountDeletionFailed
                 }
-                return .send(.delegate(.accountDeletion(.ended)))
+                return .merge(
+                    .cancel(id: CancelID.accountDeletion),
+                    .send(.delegate(.accountDeletion(.ended)))
+                )
 
             case .alert(.presented(.confirmAccountDeletion)):
                 state.isDeletingAccount = true
@@ -78,7 +98,7 @@ struct Settings {
                             guard let authorizationCode = credential.authorizationCode else {
                                 throw AccountDeletionError.missingAuthorizationCode
                             }
-                            await send(.delegate(.accountDeletion(.confirmed)))
+                            await send(.accountDeletionConfirmed)
                             try await authClient.reauthenticate(credential: credential)
                             try await entriesClient.deleteAll(uid: uid)
                             await send(.entriesDeleted)
@@ -88,6 +108,7 @@ struct Settings {
                             await send(.accountDeletionFailed(error))
                         }
                     }
+                    .cancellable(id: CancelID.accountDeletion)
                 )
 
             case .alert(.presented(.confirmSignOut)):
