@@ -8,6 +8,7 @@
 import ComposableArchitecture
 import Foundation
 import IssueReporting
+import os
 
 @Reducer
 struct Home {
@@ -165,12 +166,12 @@ struct Home {
                 return .merge(retry, firstLoadEnded(state))
 
             case .entryDeleteFailed(let id, let error):
-                reportIssue(error, "Failed to delete entry \(id).")
+                logger.error("Failed to delete entry \(id, privacy: .public): \(error, privacy: .public)")
                 state.destination = .alert(.entryDeleteFailed)
                 return .none
 
             case .entrySaveFailed(let id, let error):
-                reportIssue(error, "Failed to save entry \(id).")
+                logger.error("Failed to save entry \(id, privacy: .public): \(error, privacy: .public)")
                 state.destination = .alert(.entrySaveFailed)
                 return .none
 
@@ -265,7 +266,7 @@ struct Home {
                         await send(.entriesResponse(snapshot))
                     }
                 } catch {
-                    reportIssue(error, "Entries stream failed.")
+                    logger.error("Entries stream failed: \(error, privacy: .public)")
                     await send(.entriesStreamFailed)
                 }
             }
@@ -296,3 +297,5 @@ extension AlertState where Action == Never {
         TextState("Something went wrong while saving your entry. Please try again.")
     }
 }
+
+private let logger = Logger(category: "Home")

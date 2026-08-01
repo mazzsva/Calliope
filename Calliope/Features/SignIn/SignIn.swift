@@ -8,6 +8,7 @@
 import ComposableArchitecture
 import Foundation
 import IssueReporting
+import os
 
 @Reducer
 struct SignIn {
@@ -56,7 +57,7 @@ struct SignIn {
             case .authorizationResponse(.failure(let error)):
                 state.step = nil
                 if !error.isSignInWithAppleCancellation {
-                    reportIssue(error, "Sign in failed.")
+                    logger.error("Apple authorization failed: \(error, privacy: .public)")
                     state.alert = .signInFailed
                 }
                 return .none
@@ -76,7 +77,7 @@ struct SignIn {
 
             case .signInResponse(.failure(let error)):
                 state.step = nil
-                reportIssue(error, "Sign in failed.")
+                logger.error("Firebase sign-in failed: \(error, privacy: .public)")
                 state.alert = .signInFailed
                 return .none
 
@@ -98,3 +99,5 @@ extension AlertState where Action == Never {
         TextState("Something went wrong while signing in. Please try again.")
     }
 }
+
+private let logger = Logger(category: "SignIn")

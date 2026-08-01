@@ -7,10 +7,15 @@
 
 import ComposableArchitecture
 import Foundation
-import IssueReporting
+import os
 
 @Reducer
 struct Settings {
+    enum AccountDeletionError: Error {
+        case missingAuthorizationCode
+        case timedOut
+    }
+
     enum Alert: Equatable {
         case confirmAccountDeletion
         case confirmSignOut
@@ -42,11 +47,6 @@ struct Settings {
         }
     }
 
-    enum AccountDeletionError: Error {
-        case missingAuthorizationCode
-        case timedOut
-    }
-
     enum CancelID {
         case accountDeletion
     }
@@ -73,7 +73,7 @@ struct Settings {
             case .accountDeletionFailed(let error):
                 state.isDeletingAccount = false
                 if !error.isSignInWithAppleCancellation {
-                    reportIssue(error, "Account deletion failed.")
+                    logger.error("Account deletion failed: \(error, privacy: .public)")
                     state.alert = state.hasDeletedEntries ? .accountDeletionIncomplete : .accountDeletionFailed
                 }
                 return .merge(
@@ -137,7 +137,7 @@ struct Settings {
                 return .none
 
             case .signOutFailed(let error):
-                reportIssue(error, "Sign out failed.")
+                logger.error("Sign out failed: \(error, privacy: .public)")
                 state.alert = .signOutFailed
                 return .none
             }
@@ -193,3 +193,5 @@ extension AlertState where Action == Settings.Alert {
         TextState("Something went wrong while signing out. Please try again.")
     }
 }
+
+private let logger = Logger(category: "Settings")

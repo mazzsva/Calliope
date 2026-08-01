@@ -95,7 +95,7 @@ struct AppFeature {
                 return .run { _ in
                     try await authClient.signOut()
                 } catch: { error, _ in
-                    reportIssue(error, "Sign out after Apple ID credential revocation failed.")
+                    logger.error("Sign out after Apple ID credential revocation failed: \(error, privacy: .public)")
                 }
 
             case .authResolutionTimedOut:
@@ -221,7 +221,7 @@ struct AppFeature {
                 try await authClient.signOut()
             }
         } catch: { error, _ in
-            reportIssue(error, "Sign out after Apple ID credential check failed.")
+            logger.error("Sign out after Apple ID credential check failed: \(error, privacy: .public)")
         }
         .cancellable(id: CancelID.appleCredentialCheck, cancelInFlight: true)
     }
