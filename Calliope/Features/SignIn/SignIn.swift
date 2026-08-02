@@ -7,7 +7,6 @@
 
 import ComposableArchitecture
 import Foundation
-import IssueReporting
 import os
 
 @Reducer
@@ -35,11 +34,9 @@ struct SignIn {
         case authorizationResponse(Result<AppleCredential, any Error>)
         case signInButtonTapped
         case signInResponse(Result<Void, any Error>)
-        case signInTransitionTimedOut
     }
 
     @Dependency(\.authClient) var authClient
-    @Dependency(\.continuousClock) var clock
     @Dependency(\.signInWithAppleClient) var signInWithAppleClient
 
     var body: some Reducer<State, Action> {
@@ -70,20 +67,11 @@ struct SignIn {
                 }
 
             case .signInResponse(.success):
-                return .run { send in
-                    try await clock.sleep(for: .seconds(15))
-                    await send(.signInTransitionTimedOut)
-                }
+                return .none
 
             case .signInResponse(.failure(let error)):
                 state.step = nil
                 logger.error("Firebase sign-in failed: \(error, privacy: .public)")
-                state.alert = .signInFailed
-                return .none
-
-            case .signInTransitionTimedOut:
-                reportIssue("Firebase sign-in succeeded but the authenticated screen never appeared.")
-                state.step = nil
                 state.alert = .signInFailed
                 return .none
             }
