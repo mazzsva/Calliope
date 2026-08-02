@@ -7,7 +7,6 @@
 
 import ComposableArchitecture
 import Foundation
-import IssueReporting
 import os
 
 @Reducer
@@ -78,7 +77,6 @@ struct Home {
         case entriesStreamFailed
         case entryDeleteFailed(Entry.ID, any Error)
         case entrySaveFailed(Entry.ID, any Error)
-        case firstLoadTimedOut
         case newEntryButtonTapped
         case path(StackActionOf<EntryDetail>)
         case settingsButtonTapped
@@ -93,7 +91,6 @@ struct Home {
     enum CancelID {
         case connectivitySubscription
         case entriesSubscription
-        case firstLoadTimeout
     }
 
     @Dependency(\.appVersionClient) var appVersionClient
@@ -134,9 +131,6 @@ struct Home {
 
             case .entriesResponse(let snapshot):
                 let isFirstLoad = state.entries == nil
-                if isFirstLoad, state.isFreshSignIn, snapshot.isFromCache, snapshot.entries.isEmpty {
-                    return .none
-                }
                 state.isSyncing = snapshot.isFromCache || snapshot.hasPendingWrites
                 let entries = IdentifiedArray(uniqueElements: snapshot.entries)
                 state.entries = entries
@@ -175,12 +169,6 @@ struct Home {
                 logger.error("Failed to save entry \(id, privacy: .public): \(error, privacy: .public)")
                 state.destination = .alert(.entrySaveFailed)
                 return .none
-
-            case .firstLoadTimedOut:
-                guard state.entries == nil else { return .none }
-                reportIssue("First entries snapshot didn't arrive within 10 seconds; showing an empty list.")
-                state.entries = []
-                return firstLoadEnded(state)
 
             case .newEntryButtonTapped:
                 state.destination = .createEntry(EntryForm.State(mode: .create))
@@ -232,10 +220,7 @@ struct Home {
     }
 
     private func firstLoadEnded(_ state: State) -> Effect<Action> {
-        .merge(
-            .cancel(id: CancelID.firstLoadTimeout),
-            state.isFreshSignIn ? .run { _ in await hapticsClient.success() } : .none
-        )
+        state.isFreshSignIn ? .run { _ in await hapticsClient.success() } : .none
     }
 
     private func save(_ entry: Entry, uid: String) -> Effect<Action> {
@@ -247,9 +232,8 @@ struct Home {
     }
 
     private func subscribeToEntries(_ state: State) -> Effect<Action> {
-        let isFirstLoad = state.entries == nil
         let uid = state.user.uid
-        return .merge(
+        return
             .run { send in
                 do {
                     let snapshots = await entriesClient.entries(uid: uid)
@@ -261,15 +245,7 @@ struct Home {
                     await send(.entriesStreamFailed)
                 }
             }
-            .cancellable(id: CancelID.entriesSubscription, cancelInFlight: true),
-            isFirstLoad
-                ? .run { send in
-                    try await clock.sleep(for: .seconds(10))
-                    await send(.firstLoadTimedOut)
-                }
-                .cancellable(id: CancelID.firstLoadTimeout, cancelInFlight: true)
-                : .none
-        )
+            .cancellable(id: CancelID.entriesSubscription, cancelInFlight: true)
     }
 }
 
