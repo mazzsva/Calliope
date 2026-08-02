@@ -73,6 +73,7 @@ struct AppFeature {
     enum CancelID {
         case appleCredentialCheck
         case authObservation
+        case credentialRevocationObservation
         case signedOutSettle
     }
 
@@ -121,11 +122,7 @@ struct AppFeature {
             case .task:
                 return .merge(
                     observeAuthChanges(),
-                    .run { send in
-                        for await _ in signInWithAppleClient.credentialRevocations() {
-                            await send(.appleCredentialRevoked)
-                        }
-                    }
+                    observeCredentialRevocations()
                 )
             }
         }
@@ -147,6 +144,15 @@ struct AppFeature {
             }
         }
         .cancellable(id: CancelID.authObservation, cancelInFlight: true)
+    }
+
+    private func observeCredentialRevocations() -> Effect<Action> {
+        .run { send in
+            for await _ in signInWithAppleClient.credentialRevocations() {
+                await send(.appleCredentialRevoked)
+            }
+        }
+        .cancellable(id: CancelID.credentialRevocationObservation, cancelInFlight: true)
     }
 
     private func resolveAuthChange(_ state: inout State, user: User?) -> Effect<Action> {
