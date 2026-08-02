@@ -58,7 +58,7 @@ struct SettingsView: View {
             .alert($store.scope(state: \.alert, action: \.alert))
         }
         .safeAreaInset(edge: .bottom) {
-            Text("Version \(store.appVersion)")
+            Text("Version \(Bundle.main.appVersion)")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity)
@@ -70,7 +70,7 @@ struct SettingsView: View {
 
 #Preview {
     SettingsView(
-        store: Store(initialState: Settings.State(appVersion: "1.0", user: Shared(value: .mock))) {
+        store: Store(initialState: Settings.State(user: Shared(value: .mock))) {
             Settings()
         }
     )

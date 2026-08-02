@@ -24,13 +24,11 @@ struct Settings {
     @ObservableState
     struct State: Equatable {
         @Presents var alert: AlertState<Settings.Alert>?
-        let appVersion: String
         var hasDeletedEntries = false
         var isDeletingAccount = false
         @SharedReader var user: User
 
-        init(appVersion: String, user: Shared<User>) {
-            self.appVersion = appVersion
+        init(user: Shared<User>) {
             _user = SharedReader(user)
         }
     }

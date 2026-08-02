@@ -92,7 +92,6 @@ struct Home {
         case entriesSubscription
     }
 
-    @Dependency(\.appVersionClient) var appVersionClient
     @Dependency(\.continuousClock) var clock
     @Dependency(\.entriesClient) var entriesClient
     @Dependency(\.hapticsClient) var hapticsClient
@@ -184,9 +183,7 @@ struct Home {
                 return .none
 
             case .settingsButtonTapped:
-                state.destination = .settings(
-                    Settings.State(appVersion: appVersionClient.appVersion(), user: state.$user)
-                )
+                state.destination = .settings(Settings.State(user: state.$user))
                 return .none
 
             case .task:
