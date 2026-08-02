@@ -65,7 +65,6 @@ struct AppFeature {
         case appBecameActive
         case appleCredentialRevoked
         case authResolutionTimedOut
-        case authSessionEnded
         case authUserChanged(User?)
         case scene(PresentationAction<Scene.Action>)
         case signedOutSettleEnded
@@ -105,11 +104,6 @@ struct AppFeature {
                 reportIssue("Auth state didn't resolve within 10 seconds; falling back to the sign-in screen.")
                 state.scene = .signIn(SignIn.State())
                 return .none
-
-            case .authSessionEnded:
-                state.accountDeletionPhase = nil
-                state.scene = nil
-                return clearLocalData()
 
             case .authUserChanged(let user):
                 return .merge(
@@ -164,12 +158,7 @@ struct AppFeature {
 
     private func observeAuthChanges() -> Effect<Action> {
         .run { send in
-            var lastUID: String?
             for await user in authClient.authStateChanges() {
-                if let user, let lastUID, lastUID != user.uid {
-                    await send(.authSessionEnded)
-                }
-                lastUID = user?.uid
                 await send(.authUserChanged(user))
             }
         }
@@ -208,13 +197,14 @@ struct AppFeature {
             home.$user.withLock { $0 = user }
             return .none
 
-        case (.home, .some):
-            reportIssue("Auth changed accounts without signing out first; signing out.")
-            return .run { _ in
-                try await authClient.signOut()
-            } catch: { error, _ in
-                logger.error("Sign out after an unexpected account change failed: \(error, privacy: .public)")
-            }
+        case (.home, .some(let user)):
+            logger.notice("Auth changed accounts without signing out first; ending the session before the new one.")
+            state.accountDeletionPhase = nil
+            state.scene = nil
+            return .merge(
+                clearLocalData(),
+                .send(.authUserChanged(user))
+            )
 
         case (.home, nil):
             state.accountDeletionPhase = nil
