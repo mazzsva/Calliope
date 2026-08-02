@@ -16,37 +16,25 @@ extension View {
 private struct LoadingView: View {
     let message: String?
 
-    @State private var showsMessage = false
-
     var body: some View {
         GeometryReader { proxy in
             VStack(spacing: 16) {
                 ProgressView()
                     .controlSize(.large)
-                ZStack {
-                    Text(" ")
-                        .hidden()
-                    if showsMessage, let message {
-                        Text(message)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                            .transition(.opacity)
-                    }
+                if let message {
+                    Text(message)
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
                 }
-                .font(.headline)
-                .frame(maxWidth: .infinity)
             }
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 32)
             .padding(.top, proxy.size.height * 0.38)
-            .animation(.easeInOut(duration: 0.25), value: showsMessage)
             .animation(.easeInOut(duration: 0.25), value: message)
         }
         .groupedBackground()
-        .task {
-            try? await Task.sleep(for: .seconds(0.5))
-            showsMessage = true
-        }
     }
 }
 
