@@ -64,7 +64,6 @@ struct AppFeature {
     enum Action {
         case appBecameActive
         case appleCredentialRevoked
-        case authResolutionTimedOut
         case authUserChanged(User?)
         case scene(PresentationAction<Scene.Action>)
         case signedOutSettleEnded
@@ -74,7 +73,6 @@ struct AppFeature {
     enum CancelID {
         case appleCredentialCheck
         case authObservation
-        case authResolutionTimeout
         case signedOutSettle
     }
 
@@ -99,17 +97,8 @@ struct AppFeature {
                     logger.error("Sign out after Apple ID credential revocation failed: \(error, privacy: .public)")
                 }
 
-            case .authResolutionTimedOut:
-                guard state.scene == nil else { return .none }
-                reportIssue("Auth state didn't resolve within 10 seconds; falling back to the sign-in screen.")
-                state.scene = .signIn(SignIn.State())
-                return .none
-
             case .authUserChanged(let user):
-                return .merge(
-                    .cancel(id: CancelID.authResolutionTimeout),
-                    resolveAuthChange(&state, user: user)
-                )
+                return resolveAuthChange(&state, user: user)
 
             case .scene(.presented(.home(.delegate(.accountDeletion(let event))))):
                 switch event {
@@ -136,12 +125,7 @@ struct AppFeature {
                         for await _ in signInWithAppleClient.credentialRevocations() {
                             await send(.appleCredentialRevoked)
                         }
-                    },
-                    .run { send in
-                        try await clock.sleep(for: .seconds(10))
-                        await send(.authResolutionTimedOut)
                     }
-                    .cancellable(id: CancelID.authResolutionTimeout)
                 )
             }
         }
