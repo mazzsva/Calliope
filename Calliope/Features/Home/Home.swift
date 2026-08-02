@@ -59,6 +59,8 @@ struct Home {
 
         var isFreshSignIn: Bool { sessionOrigin.is(\.freshSignIn) }
 
+        var isLoadingFirstEntries: Bool { entries == nil }
+
         var syncStatus: SyncStatus {
             guard isOnline else { return .offline }
             return isSyncing ? .syncing : .synced

@@ -36,7 +36,7 @@ struct AppFeature {
             case nil:
                 return true
             case .home(let home):
-                return isDeletingAccount || home.entries == nil
+                return isDeletingAccount || home.isLoadingFirstEntries
             case .signIn(let signIn):
                 return isSignedOutSettling || signIn.isAuthenticating
             }
@@ -46,7 +46,7 @@ struct AppFeature {
             switch scene {
             case .home where accountDeletionPhase == .deleting:
                 return "Deleting your account…"
-            case .home(let home) where home.entries == nil:
+            case .home(let home) where home.isLoadingFirstEntries:
                 guard let isNewAccount = home.sessionOrigin.freshSignIn else { return nil }
                 return Self.signInMessage(isCreatingAccount: isNewAccount)
             case .signIn(let signIn) where signIn.isSigningIn:
