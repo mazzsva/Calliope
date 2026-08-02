@@ -26,11 +26,7 @@ struct Settings {
         @Presents var alert: AlertState<Settings.Alert>?
         var hasDeletedEntries = false
         var isDeletingAccount = false
-        @SharedReader var user: User
-
-        init(user: Shared<User>) {
-            _user = SharedReader(user)
-        }
+        var user: User
     }
 
     enum Action {

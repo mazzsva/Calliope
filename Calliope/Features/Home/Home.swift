@@ -33,7 +33,7 @@ struct Home {
 
         let sessionOrigin: SessionOrigin
 
-        @Shared var user: User
+        var user: User
 
         @CasePathable
         @dynamicMemberLookup
@@ -44,7 +44,7 @@ struct Home {
 
         init(user: User, sessionOrigin: SessionOrigin = .restored) {
             self.sessionOrigin = sessionOrigin
-            _user = Shared(value: user)
+            self.user = user
         }
 
         var filteredEntries: IdentifiedArrayOf<Entry> {
@@ -183,7 +183,7 @@ struct Home {
                 return .none
 
             case .settingsButtonTapped:
-                state.destination = .settings(Settings.State(user: state.$user))
+                state.destination = .settings(Settings.State(user: state.user))
                 return .none
 
             case .task:

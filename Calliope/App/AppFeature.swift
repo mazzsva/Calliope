@@ -180,11 +180,7 @@ struct AppFeature {
         case (.signIn, nil):
             return .none
 
-        case (.home(let home), .some(let user)) where home.user == user:
-            return .none
-
         case (.home(let home), .some(let user)) where home.user.uid == user.uid:
-            home.$user.withLock { $0 = user }
             return .none
 
         case (.home, .some(let user)):

@@ -70,7 +70,7 @@ struct SettingsView: View {
 
 #Preview {
     SettingsView(
-        store: Store(initialState: Settings.State(user: Shared(value: .mock))) {
+        store: Store(initialState: Settings.State(user: .mock)) {
             Settings()
         }
     )
