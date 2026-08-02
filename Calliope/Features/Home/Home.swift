@@ -34,7 +34,7 @@ struct Home {
 
         let sessionOrigin: SessionOrigin
 
-        var user: User
+        @Shared var user: User
 
         @CasePathable
         @dynamicMemberLookup
@@ -45,7 +45,7 @@ struct Home {
 
         init(user: User, sessionOrigin: SessionOrigin = .restored) {
             self.sessionOrigin = sessionOrigin
-            self.user = user
+            _user = Shared(value: user)
         }
 
         var filteredEntries: IdentifiedArrayOf<Entry> {
@@ -81,7 +81,6 @@ struct Home {
         case path(StackActionOf<EntryDetail>)
         case settingsButtonTapped
         case task
-        case userChanged(User)
 
         @CasePathable
         enum Delegate {
@@ -200,7 +199,7 @@ struct Home {
 
             case .settingsButtonTapped:
                 state.destination = .settings(
-                    Settings.State(appVersion: appVersionClient.appVersion(), user: state.user)
+                    Settings.State(appVersion: appVersionClient.appVersion(), user: state.$user)
                 )
                 return .none
 
@@ -214,17 +213,6 @@ struct Home {
                     }
                     .cancellable(id: CancelID.connectivitySubscription, cancelInFlight: true)
                 )
-
-            case .userChanged(let user):
-                guard user.uid == state.user.uid else {
-                    state = State(user: user)
-                    return subscribeToEntries(state)
-                }
-                state.user = user
-                if state.destination.is(\.settings) {
-                    state.destination?.modify(\.settings) { $0.user = user }
-                }
-                return .none
             }
         }
         .ifLet(\.$destination, action: \.destination)

@@ -27,7 +27,12 @@ struct Settings {
         let appVersion: String
         var hasDeletedEntries = false
         var isDeletingAccount = false
-        var user: User
+        @SharedReader var user: User
+
+        init(appVersion: String, user: Shared<User>) {
+            self.appVersion = appVersion
+            _user = SharedReader(user)
+        }
     }
 
     enum Action {

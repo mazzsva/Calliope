@@ -197,7 +197,8 @@ struct AppFeature {
             return .none
 
         case (.home(let home), .some(let user)) where home.user.uid == user.uid:
-            return .send(.scene(.presented(.home(.userChanged(user)))))
+            home.$user.withLock { $0 = user }
+            return .none
 
         case (.home, .some):
             reportIssue("Auth changed accounts without signing out first; signing out.")
