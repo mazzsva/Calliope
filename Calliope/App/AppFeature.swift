@@ -65,6 +65,7 @@ struct AppFeature {
         case appBecameActive
         case appleCredentialRevoked
         case authResolutionTimedOut
+        case authSessionEnded
         case authUserChanged(User?)
         case scene(PresentationAction<Scene.Action>)
         case signedOutSettleEnded
@@ -73,6 +74,7 @@ struct AppFeature {
 
     enum CancelID {
         case appleCredentialCheck
+        case authObservation
         case authResolutionTimeout
         case signedOutSettle
     }
@@ -104,6 +106,11 @@ struct AppFeature {
                 state.scene = .signIn(SignIn.State())
                 return .none
 
+            case .authSessionEnded:
+                state.accountDeletionPhase = nil
+                state.scene = nil
+                return .none
+
             case .authUserChanged(let user):
                 return .merge(
                     .cancel(id: CancelID.authResolutionTimeout),
@@ -130,11 +137,7 @@ struct AppFeature {
 
             case .task:
                 return .merge(
-                    .run { send in
-                        for await user in authClient.authStateChanges() {
-                            await send(.authUserChanged(user))
-                        }
-                    },
+                    observeAuthChanges(),
                     .run { send in
                         for await _ in signInWithAppleClient.credentialRevocations() {
                             await send(.appleCredentialRevoked)
@@ -149,6 +152,20 @@ struct AppFeature {
             }
         }
         .ifLet(\.$scene, action: \.scene)
+    }
+
+    private func observeAuthChanges() -> Effect<Action> {
+        .run { send in
+            var lastUID: String?
+            for await user in authClient.authStateChanges() {
+                if let user, let lastUID, lastUID != user.uid {
+                    await send(.authSessionEnded)
+                }
+                lastUID = user?.uid
+                await send(.authUserChanged(user))
+            }
+        }
+        .cancellable(id: CancelID.authObservation, cancelInFlight: true)
     }
 
     private func resolveAuthChange(_ state: inout State, user: User?) -> Effect<Action> {
@@ -182,12 +199,13 @@ struct AppFeature {
         case (.home(let home), .some(let user)) where home.user.uid == user.uid:
             return .send(.scene(.presented(.home(.userChanged(user)))))
 
-        case (.home, .some(let user)):
-            state.accountDeletionPhase = nil
-            return .merge(
-                .send(.scene(.presented(.home(.userChanged(user))))),
-                verifyAppleCredential()
-            )
+        case (.home, .some):
+            reportIssue("Auth changed accounts without signing out first; signing out.")
+            return .run { _ in
+                try await authClient.signOut()
+            } catch: { error, _ in
+                logger.error("Sign out after an unexpected account change failed: \(error, privacy: .public)")
+            }
 
         case (.home, nil):
             state.accountDeletionPhase = nil
