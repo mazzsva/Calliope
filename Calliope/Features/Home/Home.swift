@@ -67,7 +67,6 @@ struct Home {
     }
 
     enum Action: BindableAction {
-        case appBecameActive
         case binding(BindingAction<State>)
         case connectivityChanged(Bool)
         case delegate(Delegate)
@@ -103,9 +102,6 @@ struct Home {
         BindingReducer()
         Reduce { state, action in
             switch action {
-            case .appBecameActive:
-                return subscribeToEntries(state)
-
             case .binding:
                 return .none
 

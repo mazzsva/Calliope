@@ -72,7 +72,6 @@ struct HomeView: View {
             EntryDetailView(store: detailStore)
         }
         .task { await store.send(.task).finish() }
-        .onScenePhaseActive { store.send(.appBecameActive) }
         .alert($store.scope(state: \.destination?.alert, action: \.destination.alert))
         .sheet(
             item: $store.scope(state: \.destination?.createEntry, action: \.destination.createEntry)
