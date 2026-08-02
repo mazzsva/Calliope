@@ -17,7 +17,7 @@ struct EntriesClient: Sendable {
     var delete: @Sendable (_ id: Entry.ID, _ uid: String) async throws -> Void
     var deleteAll: @Sendable (_ uid: String) async throws -> Void
 
-    var entries: @Sendable (_ uid: String) -> AsyncThrowingStream<EntriesSnapshot, any Error> = { _ in
+    var entries: @Sendable (_ uid: String) async -> AsyncThrowingStream<EntriesSnapshot, any Error> = { _ in
         AsyncThrowingStream { _ in }
     }
 
@@ -40,49 +40,19 @@ extension EntriesClient: DependencyKey {
     static var liveValue: EntriesClient {
         EntriesClient(
             clearLocalData: {
-                let firestore = Firestore.firestore()
-                try await firestore.terminate()
-                try await firestore.clearPersistence()
+                try await FirestoreStorage.shared.clearLocalData()
             },
             delete: { id, uid in
-                try await entriesCollection(uid: uid).document(id.uuidString).delete()
+                try await FirestoreStorage.shared.delete(id: id, uid: uid)
             },
             deleteAll: { uid in
-                while true {
-                    let snapshot = try await entriesCollection(uid: uid).limit(to: 500).getDocuments()
-                    guard !snapshot.documents.isEmpty else { return }
-                    let batch = Firestore.firestore().batch()
-                    for document in snapshot.documents {
-                        batch.deleteDocument(document.reference)
-                    }
-                    try await batch.commit()
-                }
+                try await FirestoreStorage.shared.deleteAll(uid: uid)
             },
             entries: { uid in
-                AsyncThrowingStream { continuation in
-                    nonisolated(unsafe) let listener = entriesCollection(uid: uid)
-                        .order(by: "createdAt", descending: true)
-                        .addSnapshotListener(includeMetadataChanges: true) { snapshot, error in
-                            if let error {
-                                continuation.finish(throwing: error)
-                                return
-                            }
-                            guard let snapshot else { return }
-                            continuation.yield(
-                                EntriesSnapshot(
-                                    entries: snapshot.documents.compactMap(Entry.init(document:)),
-                                    isFromCache: snapshot.metadata.isFromCache,
-                                    hasPendingWrites: snapshot.metadata.hasPendingWrites
-                                )
-                            )
-                        }
-                    continuation.onTermination = { _ in
-                        listener.remove()
-                    }
-                }
+                await FirestoreStorage.shared.entries(uid: uid)
             },
             save: { entry, uid in
-                try await entriesCollection(uid: uid).document(entry.id.uuidString).setData(entry.documentData)
+                try await FirestoreStorage.shared.save(entry, uid: uid)
             }
         )
     }
@@ -110,6 +80,78 @@ extension DependencyValues {
     var entriesClient: EntriesClient {
         get { self[EntriesClient.self] }
         set { self[EntriesClient.self] = newValue }
+    }
+}
+
+private actor FirestoreStorage {
+    static let shared = FirestoreStorage()
+
+    private var clearing: Task<Void, any Error>?
+
+    func clearLocalData() async throws {
+        if let clearing {
+            return try await clearing.value
+        }
+        let clearing = Task {
+            let firestore = Firestore.firestore()
+            try await firestore.terminate()
+            try await firestore.clearPersistence()
+        }
+        self.clearing = clearing
+        defer { self.clearing = nil }
+        try await clearing.value
+    }
+
+    func delete(id: Entry.ID, uid: String) async throws {
+        await waitForClearing()
+        try await entriesCollection(uid: uid).document(id.uuidString).delete()
+    }
+
+    func deleteAll(uid: String) async throws {
+        await waitForClearing()
+        while true {
+            let snapshot = try await entriesCollection(uid: uid).limit(to: 500).getDocuments()
+            guard !snapshot.documents.isEmpty else { return }
+            let batch = Firestore.firestore().batch()
+            for document in snapshot.documents {
+                batch.deleteDocument(document.reference)
+            }
+            try await batch.commit()
+        }
+    }
+
+    func entries(uid: String) async -> AsyncThrowingStream<EntriesSnapshot, any Error> {
+        await waitForClearing()
+        return AsyncThrowingStream { continuation in
+            nonisolated(unsafe) let listener = entriesCollection(uid: uid)
+                .order(by: "createdAt", descending: true)
+                .addSnapshotListener(includeMetadataChanges: true) { snapshot, error in
+                    if let error {
+                        continuation.finish(throwing: error)
+                        return
+                    }
+                    guard let snapshot else { return }
+                    continuation.yield(
+                        EntriesSnapshot(
+                            entries: snapshot.documents.compactMap(Entry.init(document:)),
+                            isFromCache: snapshot.metadata.isFromCache,
+                            hasPendingWrites: snapshot.metadata.hasPendingWrites
+                        )
+                    )
+                }
+            continuation.onTermination = { _ in
+                listener.remove()
+            }
+        }
+    }
+
+    func save(_ entry: Entry, uid: String) async throws {
+        await waitForClearing()
+        try await entriesCollection(uid: uid).document(entry.id.uuidString).setData(entry.documentData)
+    }
+
+    private func waitForClearing() async {
+        _ = try? await clearing?.value
     }
 }
 

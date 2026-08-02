@@ -262,7 +262,8 @@ struct Home {
         return .merge(
             .run { send in
                 do {
-                    for try await snapshot in entriesClient.entries(uid: uid) {
+                    let snapshots = await entriesClient.entries(uid: uid)
+                    for try await snapshot in snapshots {
                         await send(.entriesResponse(snapshot))
                     }
                 } catch {
