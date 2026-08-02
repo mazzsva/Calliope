@@ -109,7 +109,7 @@ struct AppFeature {
             case .authSessionEnded:
                 state.accountDeletionPhase = nil
                 state.scene = nil
-                return .none
+                return clearLocalData()
 
             case .authUserChanged(let user):
                 return .merge(
@@ -154,6 +154,14 @@ struct AppFeature {
         .ifLet(\.$scene, action: \.scene)
     }
 
+    private func clearLocalData() -> Effect<Action> {
+        .run { _ in
+            try await entriesClient.clearLocalData()
+        } catch: { error, _ in
+            reportIssue(error, "Clearing the local entries data failed.")
+        }
+    }
+
     private func observeAuthChanges() -> Effect<Action> {
         .run { send in
             var lastUID: String?
@@ -172,7 +180,7 @@ struct AppFeature {
         switch (state.scene, user) {
         case (nil, nil):
             state.scene = .signIn(SignIn.State())
-            return .none
+            return clearLocalData()
 
         case (nil, .some(let user)):
             state.scene = .home(Home.State(user: user))
@@ -213,11 +221,7 @@ struct AppFeature {
             state.isSignedOutSettling = true
             state.scene = .signIn(SignIn.State())
             return .merge(
-                .run { _ in
-                    try await entriesClient.clearLocalData()
-                } catch: { error, _ in
-                    reportIssue(error, "Clearing the local entries data after sign out failed.")
-                },
+                clearLocalData(),
                 .run { send in
                     try await clock.sleep(for: .milliseconds(500))
                     await send(.signedOutSettleEnded)
