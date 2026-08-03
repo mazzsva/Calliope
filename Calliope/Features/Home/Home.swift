@@ -150,11 +150,13 @@ struct Home {
 
             case .entryDeleteFailed(let id, let error):
                 logger.error("Deleting entry \(id, privacy: .public) failed: \(error, privacy: .public)")
+                guard state.destination == nil else { return .none }
                 state.destination = .alert(.entryDeleteFailed)
                 return .none
 
             case .entrySaveFailed(let id, let error):
                 logger.error("Saving entry \(id, privacy: .public) failed: \(error, privacy: .public)")
+                guard state.destination == nil else { return .none }
                 state.destination = .alert(.entrySaveFailed)
                 return .none
 
