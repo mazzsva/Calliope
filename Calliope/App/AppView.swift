@@ -11,6 +11,8 @@ import SwiftUI
 struct AppView: View {
     let store: StoreOf<AppFeature>
 
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some View {
         ZStack {
             if let sceneStore = store.scope(state: \.scene, action: \.scene.presented) {
@@ -27,7 +29,10 @@ struct AppView: View {
         }
         .loadingWindow(isVisible: store.isLoading, message: store.loadingMessage)
         .task { await store.send(.task).finish() }
-        .onScenePhaseActive { store.send(.appBecameActive) }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            store.send(.appBecameActive)
+        }
     }
 }
 
