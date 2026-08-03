@@ -65,7 +65,7 @@ struct AppFeature {
         case appleCredentialRevoked
         case authUserChanged(User?)
         case scene(PresentationAction<Scene.Action>)
-        case signedOutSettleEnded
+        case signedOutSettleTimerElapsed
         case task
     }
 
@@ -103,7 +103,7 @@ struct AppFeature {
             case .scene:
                 return .none
 
-            case .signedOutSettleEnded:
+            case .signedOutSettleTimerElapsed:
                 state.isSignedOutSettling = false
                 return .none
 
@@ -186,7 +186,7 @@ struct AppFeature {
                 clearLocalData(),
                 .run { send in
                     try await clock.sleep(for: .milliseconds(500))
-                    await send(.signedOutSettleEnded)
+                    await send(.signedOutSettleTimerElapsed)
                 }
                 .cancellable(id: CancelID.signedOutSettle, cancelInFlight: true)
             )
@@ -196,7 +196,7 @@ struct AppFeature {
     private func verifyAppleCredential() -> Effect<Action> {
         .run { _ in
             guard let appleUserID = authClient.appleUserID() else { return }
-            switch await signInWithAppleClient.credentialState(forUserID: appleUserID) {
+            switch await signInWithAppleClient.credentialState(userID: appleUserID) {
             case .authorized:
                 return
             case .indeterminate, .notFound:

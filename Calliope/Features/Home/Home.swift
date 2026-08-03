@@ -149,12 +149,12 @@ struct Home {
                 return .merge(retry, firstLoadEnded(state))
 
             case .entryDeleteFailed(let id, let error):
-                logger.error("Failed to delete entry \(id, privacy: .public): \(error, privacy: .public)")
+                logger.error("Deleting entry \(id, privacy: .public) failed: \(error, privacy: .public)")
                 state.destination = .alert(.entryDeleteFailed)
                 return .none
 
             case .entrySaveFailed(let id, let error):
-                logger.error("Failed to save entry \(id, privacy: .public): \(error, privacy: .public)")
+                logger.error("Saving entry \(id, privacy: .public) failed: \(error, privacy: .public)")
                 state.destination = .alert(.entrySaveFailed)
                 return .none
 

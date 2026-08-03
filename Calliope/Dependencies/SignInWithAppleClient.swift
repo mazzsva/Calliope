@@ -16,7 +16,7 @@ import UIKit
 @DependencyClient
 struct SignInWithAppleClient: Sendable {
     var credentialRevocations: @Sendable () -> AsyncStream<Void> = { AsyncStream { _ in } }
-    var credentialState: @Sendable (_ forUserID: String) async -> AppleCredentialState = { _ in .authorized }
+    var credentialState: @Sendable (_ userID: String) async -> AppleCredentialState = { _ in .authorized }
     var requestCredential: @Sendable () async throws -> AppleCredential
 }
 
