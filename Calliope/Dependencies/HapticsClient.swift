@@ -19,9 +19,15 @@ struct HapticsClient: Sendable {
 extension HapticsClient: DependencyKey {
     static var liveValue: HapticsClient {
         HapticsClient(
-            selection: { await FeedbackGenerators.shared.selectionChanged() },
-            success: { await FeedbackGenerators.shared.notify(.success) },
-            warning: { await FeedbackGenerators.shared.notify(.warning) }
+            selection: {
+                await MainActor.run { UISelectionFeedbackGenerator().selectionChanged() }
+            },
+            success: {
+                await MainActor.run { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+            },
+            warning: {
+                await MainActor.run { UINotificationFeedbackGenerator().notificationOccurred(.warning) }
+            }
         )
     }
 
@@ -38,23 +44,5 @@ extension DependencyValues {
     var hapticsClient: HapticsClient {
         get { self[HapticsClient.self] }
         set { self[HapticsClient.self] = newValue }
-    }
-}
-
-@MainActor
-private final class FeedbackGenerators {
-    static let shared = FeedbackGenerators()
-
-    private let notification = UINotificationFeedbackGenerator()
-    private let selection = UISelectionFeedbackGenerator()
-
-    func selectionChanged() {
-        selection.selectionChanged()
-        selection.prepare()
-    }
-
-    func notify(_ type: UINotificationFeedbackGenerator.FeedbackType) {
-        notification.notificationOccurred(type)
-        notification.prepare()
     }
 }
