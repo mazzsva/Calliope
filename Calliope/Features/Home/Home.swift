@@ -130,7 +130,7 @@ struct Home {
                     .cancellable(id: CancelID.entriesSubscription, cancelInFlight: true)
                 guard state.entries == nil else { return retry }
                 state.entries = []
-                return .merge(retry, firstLoadEnded(state))
+                return .merge(retry, celebrateFirstLoad(state))
 
             case .entriesUpdated(let snapshot):
                 let isFirstLoad = state.entries == nil
@@ -146,7 +146,7 @@ struct Home {
                     }
                 }
                 guard isFirstLoad else { return .none }
-                return firstLoadEnded(state)
+                return celebrateFirstLoad(state)
 
             case .entryDeleteFailed(let id, let error):
                 logger.error("Deleting entry \(id, privacy: .public) failed: \(error, privacy: .public)")
@@ -199,16 +199,16 @@ struct Home {
         }
     }
 
+    private func celebrateFirstLoad(_ state: State) -> Effect<Action> {
+        state.isFreshSignIn ? .run { _ in await hapticsClient.success() } : .none
+    }
+
     private func delete(_ id: Entry.ID, uid: String) -> Effect<Action> {
         .run { _ in
             try await entriesClient.delete(id: id, uid: uid)
         } catch: { error, send in
             await send(.entryDeleteFailed(id, error))
         }
-    }
-
-    private func firstLoadEnded(_ state: State) -> Effect<Action> {
-        state.isFreshSignIn ? .run { _ in await hapticsClient.success() } : .none
     }
 
     private func save(_ entry: Entry, uid: String) -> Effect<Action> {
