@@ -26,14 +26,13 @@ struct EntriesClient: Sendable {
 
 struct EntriesSnapshot: Equatable, Sendable {
     var entries: [Entry]
-    var isFromCache: Bool
-    var hasPendingWrites: Bool
+    var isSyncing: Bool
 }
 
 extension EntriesSnapshot {
-    static let empty = EntriesSnapshot(entries: [], isFromCache: false, hasPendingWrites: false)
-    static let mock = EntriesSnapshot(entries: Entry.mocks, isFromCache: false, hasPendingWrites: false)
-    static let syncing = EntriesSnapshot(entries: Entry.mocks, isFromCache: true, hasPendingWrites: false)
+    static let empty = EntriesSnapshot(entries: [], isSyncing: false)
+    static let mock = EntriesSnapshot(entries: Entry.mocks, isSyncing: false)
+    static let syncing = EntriesSnapshot(entries: Entry.mocks, isSyncing: true)
 }
 
 extension EntriesClient: DependencyKey {
@@ -134,8 +133,7 @@ private actor FirestoreStorage {
                     continuation.yield(
                         EntriesSnapshot(
                             entries: snapshot.documents.compactMap(Entry.init(document:)),
-                            isFromCache: snapshot.metadata.isFromCache,
-                            hasPendingWrites: snapshot.metadata.hasPendingWrites
+                            isSyncing: snapshot.metadata.isFromCache || snapshot.metadata.hasPendingWrites
                         )
                     )
                 }

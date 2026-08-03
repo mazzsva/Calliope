@@ -119,7 +119,7 @@ struct Home {
 
             case .entriesResponse(let snapshot):
                 let isFirstLoad = state.entries == nil
-                state.isSyncing = snapshot.isFromCache || snapshot.hasPendingWrites
+                state.isSyncing = snapshot.isSyncing
                 let entries = IdentifiedArray(uniqueElements: snapshot.entries)
                 state.entries = entries
                 for id in Array(state.path.ids) {
