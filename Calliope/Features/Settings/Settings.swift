@@ -80,9 +80,12 @@ struct Settings {
                             }
                             await send(.appleCredentialReceived)
                             try await authClient.reauthenticate(credential: credential)
+                            try Task.checkCancellation()
                             try await entriesClient.deleteAll(uid: uid)
                             await send(.entriesDeleted)
+                            try Task.checkCancellation()
                             try await authClient.revokeAppleToken(authorizationCode: authorizationCode)
+                            try Task.checkCancellation()
                             try await authClient.deleteAccount()
                         } catch {
                             await send(.accountDeletionFailed(error))

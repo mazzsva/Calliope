@@ -109,6 +109,7 @@ private actor FirestoreStorage {
     func deleteAll(uid: String) async throws {
         await waitForClearing()
         while true {
+            try Task.checkCancellation()
             let snapshot = try await entriesCollection(uid: uid).limit(to: 500).getDocuments()
             guard !snapshot.documents.isEmpty else { return }
             let batch = Firestore.firestore().batch()
