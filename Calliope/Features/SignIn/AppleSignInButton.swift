@@ -1,5 +1,5 @@
 //
-//  SignInWithAppleButton.swift
+//  AppleSignInButton.swift
 //  Calliope
 //
 //  Created by Lorenzo Mazzarotto on 19/07/26.
@@ -8,20 +8,20 @@
 import AuthenticationServices
 import SwiftUI
 
-struct SignInWithAppleButton: View {
+struct AppleSignInButton: View {
     let action: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        SignInWithAppleButtonRepresentable(style: colorScheme == .dark ? .white : .black, action: action)
+        AppleSignInButtonRepresentable(style: colorScheme == .dark ? .white : .black, action: action)
             .clipShape(.capsule)
             .frame(height: 50)
             .id(colorScheme)
     }
 }
 
-private struct SignInWithAppleButtonRepresentable: UIViewRepresentable {
+private struct AppleSignInButtonRepresentable: UIViewRepresentable {
     let style: ASAuthorizationAppleIDButton.Style
     let action: () -> Void
 
@@ -59,13 +59,13 @@ private struct SignInWithAppleButtonRepresentable: UIViewRepresentable {
 }
 
 #Preview("Light") {
-    SignInWithAppleButton {}
+    AppleSignInButton {}
         .padding(.horizontal, 32)
         .preferredColorScheme(.light)
 }
 
 #Preview("Dark") {
-    SignInWithAppleButton {}
+    AppleSignInButton {}
         .padding(.horizontal, 32)
         .preferredColorScheme(.dark)
 }

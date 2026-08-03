@@ -18,7 +18,7 @@ struct SignInView: View {
                 .font(.largeTitle)
                 .fontWeight(.bold)
             Spacer()
-            SignInWithAppleButton {
+            AppleSignInButton {
                 store.send(.signInButtonTapped)
             }
             .disabled(store.isAuthenticating)
