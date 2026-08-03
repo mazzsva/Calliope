@@ -19,14 +19,13 @@ struct AppFeature {
 
     @ObservableState
     struct State: Equatable {
-        var accountDeletionPhase: AccountDeletionPhase?
         var isSignedOutSettling = false
 
         @Presents var scene: Scene.State?
 
-        enum AccountDeletionPhase: Equatable {
-            case deleting
-            case reauthenticating
+        var accountDeletionPhase: Settings.DeletionPhase? {
+            guard case .home(let home) = scene else { return nil }
+            return home.accountDeletionPhase
         }
 
         var isDeletingAccount: Bool { accountDeletionPhase != nil }
@@ -101,17 +100,6 @@ struct AppFeature {
             case .authUserChanged(let user):
                 return resolveAuthChange(&state, user: user)
 
-            case .scene(.presented(.home(.delegate(.accountDeletion(let event))))):
-                switch event {
-                case .confirmed:
-                    state.accountDeletionPhase = .deleting
-                case .ended:
-                    state.accountDeletionPhase = nil
-                case .started:
-                    state.accountDeletionPhase = .reauthenticating
-                }
-                return .none
-
             case .scene:
                 return .none
 
@@ -185,7 +173,6 @@ struct AppFeature {
 
         case (.home, .some(let user)):
             logger.notice("Auth changed accounts without signing out first; ending the session before the new one.")
-            state.accountDeletionPhase = nil
             state.scene = nil
             return .merge(
                 clearLocalData(),
@@ -193,7 +180,6 @@ struct AppFeature {
             )
 
         case (.home, nil):
-            state.accountDeletionPhase = nil
             state.isSignedOutSettling = true
             state.scene = .signIn(SignIn.State())
             return .merge(

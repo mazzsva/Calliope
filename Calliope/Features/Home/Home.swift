@@ -56,6 +56,11 @@ struct Home {
             }
         }
 
+        var accountDeletionPhase: Settings.DeletionPhase? {
+            guard case .settings(let settings)? = destination else { return nil }
+            return settings.deletionPhase
+        }
+
         var isFreshSignIn: Bool { sessionOrigin.is(\.freshSignIn) }
 
         var isLoadingFirstEntries: Bool { entries == nil }
@@ -69,7 +74,6 @@ struct Home {
     enum Action: BindableAction {
         case binding(BindingAction<State>)
         case connectivityChanged(Bool)
-        case delegate(Delegate)
         case destination(PresentationAction<Destination.Action>)
         case entriesResponse(EntriesSnapshot)
         case entriesRetryTimerElapsed
@@ -80,11 +84,6 @@ struct Home {
         case path(StackActionOf<EntryDetail>)
         case settingsButtonTapped
         case task
-
-        @CasePathable
-        enum Delegate {
-            case accountDeletion(AccountDeletionEvent)
-        }
     }
 
     enum CancelID {
@@ -108,18 +107,12 @@ struct Home {
                 state.isOnline = isOnline
                 return .none
 
-            case .delegate:
-                return .none
-
             case .destination(.presented(.createEntry(.delegate(.didSubmit(let entry))))):
                 state.destination = nil
                 return .merge(
                     .run { _ in await hapticsClient.success() },
                     save(entry, uid: state.user.uid)
                 )
-
-            case .destination(.presented(.settings(.delegate(.accountDeletion(let event))))):
-                return .send(.delegate(.accountDeletion(event)))
 
             case .destination:
                 return .none

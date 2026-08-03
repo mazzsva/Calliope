@@ -21,29 +21,30 @@ struct Settings {
         case confirmSignOut
     }
 
+    enum DeletionPhase: Equatable {
+        case deleting
+        case reauthenticating
+    }
+
     @ObservableState
     struct State: Equatable {
         @Presents var alert: AlertState<Settings.Alert>?
+        var deletionPhase: DeletionPhase?
         var hasDeletedEntries = false
-        var isDeletingAccount = false
         var user: User
+
+        var isDeletingAccount: Bool { deletionPhase != nil }
     }
 
     enum Action {
         case accountDeletionConfirmed
         case accountDeletionFailed(any Error)
         case alert(PresentationAction<Alert>)
-        case delegate(Delegate)
         case deleteAccountButtonTapped
         case dismissButtonTapped
         case entriesDeleted
         case signOutButtonTapped
         case signOutFailed(any Error)
-
-        @CasePathable
-        enum Delegate {
-            case accountDeletion(AccountDeletionEvent)
-        }
     }
 
     enum CancelID {
@@ -60,31 +61,26 @@ struct Settings {
         Reduce { state, action in
             switch action {
             case .accountDeletionConfirmed:
-                return .merge(
-                    .send(.delegate(.accountDeletion(.confirmed))),
+                state.deletionPhase = .deleting
+                return
                     .run { send in
                         try await clock.sleep(for: .seconds(60))
                         await send(.accountDeletionFailed(AccountDeletionError.timedOut))
                     }
                     .cancellable(id: CancelID.accountDeletion)
-                )
 
             case .accountDeletionFailed(let error):
-                state.isDeletingAccount = false
+                state.deletionPhase = nil
                 if !error.isSignInWithAppleCancellation {
                     logger.error("Account deletion failed: \(error, privacy: .public)")
                     state.alert = state.hasDeletedEntries ? .accountDeletionIncomplete : .accountDeletionFailed
                 }
-                return .merge(
-                    .cancel(id: CancelID.accountDeletion),
-                    .send(.delegate(.accountDeletion(.ended)))
-                )
+                return .cancel(id: CancelID.accountDeletion)
 
             case .alert(.presented(.confirmAccountDeletion)):
-                state.isDeletingAccount = true
+                state.deletionPhase = .reauthenticating
                 let uid = state.user.uid
-                return .merge(
-                    .send(.delegate(.accountDeletion(.started))),
+                return
                     .run { send in
                         do {
                             let credential = try await signInWithAppleClient.requestCredential()
@@ -102,7 +98,6 @@ struct Settings {
                         }
                     }
                     .cancellable(id: CancelID.accountDeletion)
-                )
 
             case .alert(.presented(.confirmSignOut)):
                 return .run { _ in
@@ -112,9 +107,6 @@ struct Settings {
                 }
 
             case .alert:
-                return .none
-
-            case .delegate:
                 return .none
 
             case .deleteAccountButtonTapped:
