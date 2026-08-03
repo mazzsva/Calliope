@@ -39,7 +39,7 @@ struct HomeView: View {
                         Text("Calliope")
                             .font(.title)
                             .fontWeight(.bold)
-                        SyncStatusLabel(status: store.syncStatus, entryCount: store.entries?.count ?? 0)
+                        SyncStatusLabel(status: store.syncStatus, entryCount: store.entryCount)
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {

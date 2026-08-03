@@ -52,6 +52,8 @@ struct Home {
             return settings.deletionPhase
         }
 
+        var entryCount: Int { entries?.count ?? 0 }
+
         var filteredEntries: IdentifiedArrayOf<Entry> {
             guard let entries else { return [] }
             guard !searchText.isEmpty else { return entries }
