@@ -75,9 +75,9 @@ struct Home {
         case binding(BindingAction<State>)
         case connectivityChanged(Bool)
         case destination(PresentationAction<Destination.Action>)
-        case entriesResponse(EntriesSnapshot)
         case entriesRetryTimerElapsed
         case entriesStreamFailed
+        case entriesUpdated(EntriesSnapshot)
         case entryDeleteFailed(Entry.ID, any Error)
         case entrySaveFailed(Entry.ID, any Error)
         case newEntryButtonTapped
@@ -117,22 +117,6 @@ struct Home {
             case .destination:
                 return .none
 
-            case .entriesResponse(let snapshot):
-                let isFirstLoad = state.entries == nil
-                state.isSyncing = snapshot.isSyncing
-                let entries = IdentifiedArray(uniqueElements: snapshot.entries)
-                state.entries = entries
-                for id in Array(state.path.ids) {
-                    guard let entryID = state.path[id: id]?.entry.id else { continue }
-                    if let entry = entries[id: entryID] {
-                        state.path[id: id]?.entry = entry
-                    } else {
-                        state.path.pop(from: id)
-                    }
-                }
-                guard isFirstLoad else { return .none }
-                return firstLoadEnded(state)
-
             case .entriesRetryTimerElapsed:
                 return subscribeToEntries(state)
 
@@ -147,6 +131,22 @@ struct Home {
                 guard state.entries == nil else { return retry }
                 state.entries = []
                 return .merge(retry, firstLoadEnded(state))
+
+            case .entriesUpdated(let snapshot):
+                let isFirstLoad = state.entries == nil
+                state.isSyncing = snapshot.isSyncing
+                let entries = IdentifiedArray(uniqueElements: snapshot.entries)
+                state.entries = entries
+                for id in Array(state.path.ids) {
+                    guard let entryID = state.path[id: id]?.entry.id else { continue }
+                    if let entry = entries[id: entryID] {
+                        state.path[id: id]?.entry = entry
+                    } else {
+                        state.path.pop(from: id)
+                    }
+                }
+                guard isFirstLoad else { return .none }
+                return firstLoadEnded(state)
 
             case .entryDeleteFailed(let id, let error):
                 logger.error("Deleting entry \(id, privacy: .public) failed: \(error, privacy: .public)")
@@ -226,7 +226,7 @@ struct Home {
                 do {
                     let snapshots = await entriesClient.entries(uid: uid)
                     for try await snapshot in snapshots {
-                        await send(.entriesResponse(snapshot))
+                        await send(.entriesUpdated(snapshot))
                     }
                 } catch {
                     logger.error("Entries stream failed: \(error, privacy: .public)")
