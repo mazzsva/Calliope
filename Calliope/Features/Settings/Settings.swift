@@ -37,9 +37,9 @@ struct Settings {
     }
 
     enum Action {
-        case accountDeletionConfirmed
         case accountDeletionFailed(any Error)
         case alert(PresentationAction<Alert>)
+        case appleCredentialReceived
         case deleteAccountButtonTapped
         case dismissButtonTapped
         case entriesDeleted
@@ -60,15 +60,6 @@ struct Settings {
     var body: some Reducer<State, Action> {
         Reduce { state, action in
             switch action {
-            case .accountDeletionConfirmed:
-                state.deletionPhase = .deleting
-                return
-                    .run { send in
-                        try await clock.sleep(for: .seconds(60))
-                        await send(.accountDeletionFailed(AccountDeletionError.timedOut))
-                    }
-                    .cancellable(id: CancelID.accountDeletion)
-
             case .accountDeletionFailed(let error):
                 state.deletionPhase = nil
                 if !error.isSignInWithAppleCancellation {
@@ -87,7 +78,7 @@ struct Settings {
                             guard let authorizationCode = credential.authorizationCode else {
                                 throw AccountDeletionError.missingAuthorizationCode
                             }
-                            await send(.accountDeletionConfirmed)
+                            await send(.appleCredentialReceived)
                             try await authClient.reauthenticate(credential: credential)
                             try await entriesClient.deleteAll(uid: uid)
                             await send(.entriesDeleted)
@@ -108,6 +99,15 @@ struct Settings {
 
             case .alert:
                 return .none
+
+            case .appleCredentialReceived:
+                state.deletionPhase = .deleting
+                return
+                    .run { send in
+                        try await clock.sleep(for: .seconds(60))
+                        await send(.accountDeletionFailed(AccountDeletionError.timedOut))
+                    }
+                    .cancellable(id: CancelID.accountDeletion)
 
             case .deleteAccountButtonTapped:
                 guard !state.isDeletingAccount else { return .none }
