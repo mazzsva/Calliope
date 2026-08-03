@@ -29,10 +29,12 @@ struct AppView: View {
         }
         .loadingWindow(isVisible: store.isLoading, message: store.loadingMessage)
         .task { await store.send(.task).finish() }
-        .onChange(of: scenePhase) { _, newPhase in
-            guard newPhase == .active else { return }
-            store.send(.appBecameActive)
-        }
+        .onChange(of: scenePhase) { _, newPhase in scenePhaseChanged(to: newPhase) }
+    }
+
+    private func scenePhaseChanged(to newPhase: ScenePhase) {
+        guard newPhase == .active else { return }
+        store.send(.appBecameActive)
     }
 }
 
