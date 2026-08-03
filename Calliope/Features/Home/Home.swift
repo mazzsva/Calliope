@@ -47,6 +47,11 @@ struct Home {
             self.user = user
         }
 
+        var accountDeletionPhase: Settings.DeletionPhase? {
+            guard case .settings(let settings)? = destination else { return nil }
+            return settings.deletionPhase
+        }
+
         var filteredEntries: IdentifiedArrayOf<Entry> {
             guard let entries else { return [] }
             guard !searchText.isEmpty else { return entries }
@@ -54,11 +59,6 @@ struct Home {
                 entry.term.localizedStandardContains(searchText)
                     || entry.definition.localizedStandardContains(searchText)
             }
-        }
-
-        var accountDeletionPhase: Settings.DeletionPhase? {
-            guard case .settings(let settings)? = destination else { return nil }
-            return settings.deletionPhase
         }
 
         var isFreshSignIn: Bool { sessionOrigin.is(\.freshSignIn) }
