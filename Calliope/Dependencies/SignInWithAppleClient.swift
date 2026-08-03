@@ -63,10 +63,7 @@ extension SignInWithAppleClient: DependencyKey {
             credentialState: { userID in
                 await withCheckedContinuation { continuation in
                     ASAuthorizationAppleIDProvider()
-                        .getCredentialState(forUserID: userID) { state, error in
-                            guard error == nil else {
-                                return continuation.resume(returning: .indeterminate)
-                            }
+                        .getCredentialState(forUserID: userID) { state, _ in
                             switch state {
                             case .authorized:
                                 continuation.resume(returning: .authorized)

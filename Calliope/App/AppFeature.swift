@@ -183,6 +183,7 @@ struct AppFeature {
             state.isSignedOutSettling = true
             state.scene = .signIn(SignIn.State())
             return .merge(
+                .cancel(id: CancelID.appleCredentialCheck),
                 clearLocalData(),
                 .run { send in
                     try await clock.sleep(for: .milliseconds(500))
@@ -196,11 +197,17 @@ struct AppFeature {
     private func verifyAppleCredential() -> Effect<Action> {
         .run { _ in
             guard let appleUserID = authClient.appleUserID() else { return }
-            switch await signInWithAppleClient.credentialState(userID: appleUserID) {
+            let credentialState = await signInWithAppleClient.credentialState(userID: appleUserID)
+            try Task.checkCancellation()
+            switch credentialState {
             case .authorized:
                 return
-            case .indeterminate, .notFound:
-                logger.notice("Apple ID credential check found no definitive revocation; keeping the session.")
+            case .indeterminate:
+                logger.notice("Apple ID credential check was indeterminate; signing out.")
+                try await authClient.signOut()
+            case .notFound:
+                logger.notice("Apple ID credential was not found; signing out.")
+                try await authClient.signOut()
             case .revoked:
                 logger.notice("Apple ID credential was revoked; signing out.")
                 try await authClient.signOut()
