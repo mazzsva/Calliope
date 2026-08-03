@@ -65,49 +65,54 @@ private final class LoadingWindowAnchor: UIView {
     }
 
     private let fadeDuration: TimeInterval = 0.25
-    private var loadingWindow: UIWindow?
     private var hostingController: UIHostingController<LoadingView>?
+    private var loadingWindow: UIWindow?
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
         update()
     }
 
-    private func update() {
-        if isLoadingVisible {
-            if let loadingWindow {
-                loadingWindow.isUserInteractionEnabled = true
-                UIView.animate(withDuration: fadeDuration, delay: 0, options: .allowUserInteraction) {
-                    loadingWindow.alpha = 1
-                }
-                return
-            }
-            guard let windowScene = window?.windowScene else { return }
-            let hostingController = UIHostingController(rootView: LoadingView(message: message))
-            hostingController.view.backgroundColor = .clear
-            let loadingWindow = UIWindow(windowScene: windowScene)
-            loadingWindow.rootViewController = hostingController
-            loadingWindow.backgroundColor = .clear
-            loadingWindow.windowLevel = UIWindow.Level(UIWindow.Level.normal.rawValue + 1)
-            loadingWindow.alpha = 0
-            loadingWindow.isHidden = false
-            self.hostingController = hostingController
-            self.loadingWindow = loadingWindow
-            UIView.animate(withDuration: fadeDuration, delay: 0, options: .allowUserInteraction) {
-                loadingWindow.alpha = 1
-            }
-        } else {
-            guard let loadingWindow else { return }
-            loadingWindow.isUserInteractionEnabled = false
-            UIView.animate(withDuration: fadeDuration) {
-                loadingWindow.alpha = 0
-            } completion: { [weak self] _ in
-                guard let self, !isLoadingVisible else { return }
-                loadingWindow.isHidden = true
-                self.loadingWindow = nil
-                self.hostingController = nil
-            }
+    private func fadeIn(_ window: UIWindow) {
+        UIView.animate(withDuration: fadeDuration, delay: 0, options: .allowUserInteraction) {
+            window.alpha = 1
         }
+    }
+
+    private func hideLoadingWindow() {
+        guard let loadingWindow else { return }
+        loadingWindow.isUserInteractionEnabled = false
+        UIView.animate(withDuration: fadeDuration) {
+            loadingWindow.alpha = 0
+        } completion: { [weak self] _ in
+            guard let self, !isLoadingVisible else { return }
+            loadingWindow.isHidden = true
+            self.loadingWindow = nil
+            self.hostingController = nil
+        }
+    }
+
+    private func showLoadingWindow() {
+        if let loadingWindow {
+            loadingWindow.isUserInteractionEnabled = true
+            return fadeIn(loadingWindow)
+        }
+        guard let windowScene = window?.windowScene else { return }
+        let hostingController = UIHostingController(rootView: LoadingView(message: message))
+        hostingController.view.backgroundColor = .clear
+        let loadingWindow = UIWindow(windowScene: windowScene)
+        loadingWindow.rootViewController = hostingController
+        loadingWindow.backgroundColor = .clear
+        loadingWindow.windowLevel = UIWindow.Level(UIWindow.Level.normal.rawValue + 1)
+        loadingWindow.alpha = 0
+        loadingWindow.isHidden = false
+        self.hostingController = hostingController
+        self.loadingWindow = loadingWindow
+        fadeIn(loadingWindow)
+    }
+
+    private func update() {
+        isLoadingVisible ? showLoadingWindow() : hideLoadingWindow()
     }
 }
 
