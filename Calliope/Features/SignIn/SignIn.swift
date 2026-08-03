@@ -33,7 +33,7 @@ struct SignIn {
         case alert(PresentationAction<Never>)
         case authorizationResponse(Result<AppleCredential, any Error>)
         case signInButtonTapped
-        case signInResponse(Result<Void, any Error>)
+        case signInFailed(any Error)
     }
 
     @Dependency(\.authClient) var authClient
@@ -47,8 +47,10 @@ struct SignIn {
 
             case .authorizationResponse(.success(let credential)):
                 state.step = .signingIn(isNewAccount: credential.isFirstAuthorization)
-                return .run { send in
-                    await send(.signInResponse(Result { try await authClient.signIn(credential: credential) }))
+                return .run { _ in
+                    try await authClient.signIn(credential: credential)
+                } catch: { error, send in
+                    await send(.signInFailed(error))
                 }
 
             case .authorizationResponse(.failure(let error)):
@@ -66,10 +68,7 @@ struct SignIn {
                     await send(.authorizationResponse(Result { try await signInWithAppleClient.requestCredential() }))
                 }
 
-            case .signInResponse(.success):
-                return .none
-
-            case .signInResponse(.failure(let error)):
+            case .signInFailed(let error):
                 state.step = nil
                 logger.error("Firebase sign-in failed: \(error, privacy: .public)")
                 state.alert = .signInFailed
