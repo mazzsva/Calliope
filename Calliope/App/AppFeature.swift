@@ -174,7 +174,7 @@ struct AppFeature {
         case (.home, .some(let user)):
             logger.notice("Auth changed accounts without signing out first; ending the session before the new one.")
             state.scene = nil
-            return .merge(
+            return .concatenate(
                 clearLocalData(),
                 .send(.authUserChanged(user))
             )
