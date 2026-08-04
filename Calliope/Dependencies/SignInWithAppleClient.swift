@@ -20,7 +20,7 @@ struct SignInWithAppleClient: Sendable {
     var requestCredential: @Sendable () async throws -> AppleCredential
 }
 
-struct AppleCredential: Equatable, Sendable {
+struct AppleCredential: Sendable {
     var authorizationCode: String?
     var idToken: String
     var isFirstAuthorization: Bool
