@@ -14,7 +14,7 @@ struct AppleSignInButton: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        AppleSignInButtonRepresentable(style: colorScheme == .dark ? .white : .black, action: action)
+        AppleSignInButtonRepresentable(action: action, style: colorScheme == .dark ? .white : .black)
             .clipShape(.capsule)
             .frame(height: 50)
             .id(colorScheme)
@@ -22,8 +22,8 @@ struct AppleSignInButton: View {
 }
 
 private struct AppleSignInButtonRepresentable: UIViewRepresentable {
-    let style: ASAuthorizationAppleIDButton.Style
     let action: () -> Void
+    let style: ASAuthorizationAppleIDButton.Style
 
     @Environment(\.isEnabled) private var isEnabled
 
