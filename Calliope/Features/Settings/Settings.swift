@@ -70,47 +70,17 @@ struct Settings {
 
             case .alert(.presented(.confirmAccountDeletion)):
                 state.deletionPhase = .reauthenticating
-                let uid = state.user.uid
-                return
-                    .run { send in
-                        do {
-                            let credential = try await signInWithAppleClient.requestCredential()
-                            guard let authorizationCode = credential.authorizationCode else {
-                                throw AccountDeletionError.missingAuthorizationCode
-                            }
-                            await send(.appleCredentialReceived)
-                            try await authClient.reauthenticate(credential: credential)
-                            try Task.checkCancellation()
-                            try await entriesClient.deleteAll(uid: uid)
-                            await send(.entriesDeleted)
-                            try Task.checkCancellation()
-                            try await authClient.revokeAppleToken(authorizationCode: authorizationCode)
-                            try Task.checkCancellation()
-                            try await authClient.deleteAccount()
-                        } catch {
-                            await send(.accountDeletionFailed(error))
-                        }
-                    }
-                    .cancellable(id: CancelID.accountDeletion)
+                return deleteAccount(uid: state.user.uid)
 
             case .alert(.presented(.confirmSignOut)):
-                return .run { _ in
-                    try await authClient.signOut()
-                } catch: { error, send in
-                    await send(.signOutFailed(error))
-                }
+                return signOut()
 
             case .alert:
                 return .none
 
             case .appleCredentialReceived:
                 state.deletionPhase = .deleting
-                return
-                    .run { send in
-                        try await clock.sleep(for: .seconds(60))
-                        await send(.accountDeletionFailed(AccountDeletionError.timedOut))
-                    }
-                    .cancellable(id: CancelID.accountDeletion)
+                return startDeletionTimeout()
 
             case .deleteAccountButtonTapped:
                 guard !state.isDeletingAccount else { return .none }
@@ -137,6 +107,45 @@ struct Settings {
             }
         }
         .ifLet(\.$alert, action: \.alert)
+    }
+
+    private func deleteAccount(uid: String) -> Effect<Action> {
+        .run { send in
+            do {
+                let credential = try await signInWithAppleClient.requestCredential()
+                guard let authorizationCode = credential.authorizationCode else {
+                    throw AccountDeletionError.missingAuthorizationCode
+                }
+                await send(.appleCredentialReceived)
+                try await authClient.reauthenticate(credential: credential)
+                try Task.checkCancellation()
+                try await entriesClient.deleteAll(uid: uid)
+                await send(.entriesDeleted)
+                try Task.checkCancellation()
+                try await authClient.revokeAppleToken(authorizationCode: authorizationCode)
+                try Task.checkCancellation()
+                try await authClient.deleteAccount()
+            } catch {
+                await send(.accountDeletionFailed(error))
+            }
+        }
+        .cancellable(id: CancelID.accountDeletion)
+    }
+
+    private func signOut() -> Effect<Action> {
+        .run { _ in
+            try await authClient.signOut()
+        } catch: { error, send in
+            await send(.signOutFailed(error))
+        }
+    }
+
+    private func startDeletionTimeout() -> Effect<Action> {
+        .run { send in
+            try await clock.sleep(for: .seconds(60))
+            await send(.accountDeletionFailed(AccountDeletionError.timedOut))
+        }
+        .cancellable(id: CancelID.accountDeletion)
     }
 }
 
