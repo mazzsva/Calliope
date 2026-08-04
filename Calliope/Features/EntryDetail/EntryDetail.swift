@@ -40,7 +40,6 @@ struct EntryDetail {
         }
     }
 
-    @Dependency(\.date.now) var now
     @Dependency(\.hapticsClient) var hapticsClient
 
     var body: some Reducer<State, Action> {
@@ -48,7 +47,6 @@ struct EntryDetail {
             switch action {
             case .bookmarkButtonTapped:
                 state.entry.isBookmarked.toggle()
-                state.entry.updatedAt = now
                 return .merge(
                     .run { _ in await hapticsClient.selection() },
                     .send(.delegate(.didUpdate(state.entry)))

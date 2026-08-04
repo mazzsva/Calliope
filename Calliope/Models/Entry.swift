@@ -14,7 +14,6 @@ struct Entry: Equatable, Identifiable, Sendable {
     let id: UUID
     var isBookmarked: Bool
     var term: String
-    var updatedAt: Date
 }
 
 extension Entry {
@@ -23,8 +22,7 @@ extension Entry {
         definition: "Something that happens very rarely.",
         id: UUID(0),
         isBookmarked: true,
-        term: "Once in a blue moon",
-        updatedAt: Date(timeIntervalSince1970: 1_750_000_000)
+        term: "Once in a blue moon"
     )
 
     static let mocks: [Entry] = [
@@ -35,8 +33,7 @@ extension Entry {
             definition: "The easiest wins, taken first.",
             id: UUID(2),
             isBookmarked: false,
-            term: "Low-hanging fruit",
-            updatedAt: Date(timeIntervalSince1970: 1_748_000_000)
+            term: "Low-hanging fruit"
         ),
     ]
 
@@ -45,7 +42,6 @@ extension Entry {
         definition: "To work early and late until you're exhausted.",
         id: UUID(1),
         isBookmarked: false,
-        term: "Burn the candle at both ends",
-        updatedAt: Date(timeIntervalSince1970: 1_749_000_000)
+        term: "Burn the candle at both ends"
     )
 }

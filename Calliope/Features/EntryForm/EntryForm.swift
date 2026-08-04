@@ -95,8 +95,7 @@ struct EntryForm {
                         definition: definition,
                         id: uuid(),
                         isBookmarked: false,
-                        term: term,
-                        updatedAt: now
+                        term: term
                     )
                 case .edit(let original):
                     entry = Entry(
@@ -104,8 +103,7 @@ struct EntryForm {
                         definition: definition,
                         id: original.id,
                         isBookmarked: original.isBookmarked,
-                        term: term,
-                        updatedAt: now
+                        term: term
                     )
                 }
                 return .send(.delegate(.didSubmit(entry)))

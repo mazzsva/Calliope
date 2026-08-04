@@ -166,8 +166,7 @@ extension Entry {
             let definition = data["definition"] as? String,
             let id = UUID(uuidString: document.documentID),
             let isBookmarked = data["isBookmarked"] as? Bool,
-            let term = data["term"] as? String,
-            let updatedAt = data["updatedAt"] as? Timestamp
+            let term = data["term"] as? String
         else {
             reportIssue("Skipping entry document \(document.documentID) that failed to decode.")
             return nil
@@ -177,8 +176,7 @@ extension Entry {
             definition: definition,
             id: id,
             isBookmarked: isBookmarked,
-            term: term,
-            updatedAt: updatedAt.dateValue()
+            term: term
         )
     }
 
@@ -188,7 +186,6 @@ extension Entry {
             "definition": definition,
             "isBookmarked": isBookmarked,
             "term": term,
-            "updatedAt": Timestamp(date: updatedAt),
         ]
     }
 }
