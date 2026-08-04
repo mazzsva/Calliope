@@ -126,6 +126,14 @@ extension Error {
     }
 }
 
+@MainActor
+private func performAuthorization(hashedNonce: String) async throws -> ASAuthorization {
+    let request = ASAuthorizationAppleIDProvider().createRequest()
+    request.requestedScopes = [.email]
+    request.nonce = hashedNonce
+    return try await AuthorizationCoordinator().perform(request)
+}
+
 private func randomNonce(byteCount: Int = 32) -> String {
     var bytes = [UInt8](repeating: 0, count: byteCount)
     let status = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
@@ -135,14 +143,6 @@ private func randomNonce(byteCount: Int = 32) -> String {
 
 private func sha256(_ input: String) -> String {
     SHA256.hash(data: Data(input.utf8)).map { String(format: "%02x", $0) }.joined()
-}
-
-@MainActor
-private func performAuthorization(hashedNonce: String) async throws -> ASAuthorization {
-    let request = ASAuthorizationAppleIDProvider().createRequest()
-    request.requestedScopes = [.email]
-    request.nonce = hashedNonce
-    return try await AuthorizationCoordinator().perform(request)
 }
 
 @MainActor
