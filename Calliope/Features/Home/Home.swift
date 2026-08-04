@@ -179,13 +179,8 @@ struct Home {
 
             case .task:
                 return .merge(
-                    subscribeToEntries(state),
-                    .run { send in
-                        for await isOnline in networkMonitorClient.connectivityChanges() {
-                            await send(.connectivityChanged(isOnline))
-                        }
-                    }
-                    .cancellable(id: CancelID.connectivitySubscription, cancelInFlight: true)
+                    observeConnectivity(),
+                    subscribeToEntries(state)
                 )
             }
         }
@@ -205,6 +200,15 @@ struct Home {
         } catch: { error, send in
             await send(.entryDeleteFailed(id, error))
         }
+    }
+
+    private func observeConnectivity() -> Effect<Action> {
+        .run { send in
+            for await isOnline in networkMonitorClient.connectivityChanges() {
+                await send(.connectivityChanged(isOnline))
+            }
+        }
+        .cancellable(id: CancelID.connectivitySubscription, cancelInFlight: true)
     }
 
     private func save(_ entry: Entry, uid: String) -> Effect<Action> {
