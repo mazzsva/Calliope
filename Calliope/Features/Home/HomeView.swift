@@ -16,7 +16,7 @@ struct HomeView: View {
     var body: some View {
         NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
             ScrollView {
-                GlassEffectContainer(spacing: 16) {
+                GlassEffectContainer(spacing: 0) {
                     LazyVStack(spacing: 16) {
                         ForEach(store.filteredEntries) { entry in
                             NavigationLink(state: EntryDetail.State(entry: entry)) {
