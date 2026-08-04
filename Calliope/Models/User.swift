@@ -6,7 +6,7 @@
 //
 
 struct User: Equatable, Sendable {
-    var email: String?
+    let email: String?
     let uid: String
 }
 
