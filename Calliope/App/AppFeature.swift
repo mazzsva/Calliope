@@ -20,7 +20,7 @@ struct AppFeature {
     @ObservableState
     struct State: Equatable {
         var isSignedOutSettling = false
-        @Presents var scene: Scene.State?
+        var scene: Scene.State?
 
         var accountDeletionPhase: Settings.DeletionPhase? {
             guard case .home(let home) = scene else { return nil }
@@ -64,7 +64,7 @@ struct AppFeature {
         case appBecameActive
         case appleCredentialInvalidated(AppleCredentialState)
         case authUserChanged(User?)
-        case scene(PresentationAction<Scene.Action>)
+        case scene(Scene.Action)
         case signedOutSettleTimerElapsed
         case task
     }
@@ -115,7 +115,7 @@ struct AppFeature {
                 )
             }
         }
-        .ifLet(\.$scene, action: \.scene)
+        .ifLet(\.scene, action: \.scene)
     }
 
     private func clearLocalData() -> Effect<Action> {

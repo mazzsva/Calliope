@@ -15,7 +15,7 @@ struct AppView: View {
 
     var body: some View {
         ZStack {
-            if let sceneStore = store.scope(state: \.scene, action: \.scene.presented) {
+            if let sceneStore = store.scope(state: \.scene, action: \.scene) {
                 switch sceneStore.case {
                 case .home(let homeStore):
                     HomeView(store: homeStore)
