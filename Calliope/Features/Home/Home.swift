@@ -30,7 +30,6 @@ struct Home {
         var user: User
 
         @CasePathable
-        @dynamicMemberLookup
         enum SessionOrigin: Equatable {
             case freshSignIn(isNewAccount: Bool)
             case restored

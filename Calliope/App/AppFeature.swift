@@ -45,7 +45,7 @@ struct AppFeature {
             case .home where accountDeletionPhase == .deleting:
                 return "Deleting your account…"
             case .home(let home) where home.isLoadingFirstEntries:
-                guard let isNewAccount = home.sessionOrigin.freshSignIn else { return nil }
+                guard case .freshSignIn(let isNewAccount) = home.sessionOrigin else { return nil }
                 return Self.signInMessage(isCreatingAccount: isNewAccount)
             case .signIn(let signIn):
                 guard case .signingIn(let isNewAccount) = signIn.step else { return nil }
