@@ -36,7 +36,7 @@ extension AppleCredential {
     )
 }
 
-enum AppleCredentialState: Equatable, Sendable {
+enum AppleCredentialState: Sendable {
     case authorized
     case indeterminate
     case notFound
