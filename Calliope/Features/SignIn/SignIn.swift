@@ -16,7 +16,6 @@ struct SignIn {
         @Presents var alert: AlertState<Never>?
         var step: Step?
 
-        @CasePathable
         enum Step: Equatable {
             case awaitingAuthorization
             case signingIn(isNewAccount: Bool)
@@ -25,8 +24,6 @@ struct SignIn {
         var isAuthenticating: Bool { step != nil }
 
         var isCreatingAccount: Bool { step == .signingIn(isNewAccount: true) }
-
-        var isSigningIn: Bool { step.is(\.signingIn) }
     }
 
     enum Action {

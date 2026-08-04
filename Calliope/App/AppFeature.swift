@@ -47,9 +47,10 @@ struct AppFeature {
             case .home(let home) where home.isLoadingFirstEntries:
                 guard let isNewAccount = home.sessionOrigin.freshSignIn else { return nil }
                 return Self.signInMessage(isCreatingAccount: isNewAccount)
-            case .signIn(let signIn) where signIn.isSigningIn:
-                return Self.signInMessage(isCreatingAccount: signIn.isCreatingAccount)
-            case nil, .home, .signIn:
+            case .signIn(let signIn):
+                guard case .signingIn(let isNewAccount) = signIn.step else { return nil }
+                return Self.signInMessage(isCreatingAccount: isNewAccount)
+            case nil, .home:
                 return nil
             }
         }
