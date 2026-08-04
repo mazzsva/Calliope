@@ -27,15 +27,6 @@ struct AppleCredential: Equatable, Sendable {
     var rawNonce: String
 }
 
-extension AppleCredential {
-    static let mock = AppleCredential(
-        authorizationCode: "mock-authorization-code",
-        idToken: "mock-id-token",
-        isFirstAuthorization: false,
-        rawNonce: "mock-raw-nonce"
-    )
-}
-
 enum AppleCredentialState: Sendable {
     case authorized
     case indeterminate
@@ -104,7 +95,14 @@ extension SignInWithAppleClient: DependencyKey {
         SignInWithAppleClient(
             credentialRevocations: { AsyncStream { _ in } },
             credentialState: { _ in .authorized },
-            requestCredential: { .mock }
+            requestCredential: {
+                AppleCredential(
+                    authorizationCode: "mock-authorization-code",
+                    idToken: "mock-id-token",
+                    isFirstAuthorization: false,
+                    rawNonce: "mock-raw-nonce"
+                )
+            }
         )
     }
 
