@@ -115,7 +115,9 @@ struct AppFeature {
                 )
             }
         }
-        .ifLet(\.scene, action: \.scene)
+        .ifLet(\.scene, action: \.scene) {
+            Scene.body
+        }
     }
 
     private func clearLocalData() -> Effect<Action> {
