@@ -18,9 +18,6 @@ struct CalliopeApp: App {
     }
 
     init() {
-        #if !DEBUG
-        IssueReporters.current = [LoggingIssueReporter()]
-        #endif
         FirebaseApp.configure()
     }
 
