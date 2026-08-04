@@ -91,20 +91,20 @@ struct EntryForm {
                 switch state.mode {
                 case .create:
                     entry = Entry(
-                        id: uuid(),
-                        term: term,
-                        definition: definition,
-                        isBookmarked: false,
                         createdAt: now,
+                        definition: definition,
+                        id: uuid(),
+                        isBookmarked: false,
+                        term: term,
                         updatedAt: now
                     )
                 case .edit(let original):
                     entry = Entry(
-                        id: original.id,
-                        term: term,
-                        definition: definition,
-                        isBookmarked: original.isBookmarked,
                         createdAt: original.createdAt,
+                        definition: definition,
+                        id: original.id,
+                        isBookmarked: original.isBookmarked,
+                        term: term,
                         updatedAt: now
                     )
                 }

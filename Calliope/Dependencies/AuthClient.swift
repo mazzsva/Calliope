@@ -32,7 +32,7 @@ extension AuthClient: DependencyKey {
                 AsyncStream { continuation in
                     nonisolated(unsafe) let handle = Auth.auth()
                         .addStateDidChangeListener { _, user in
-                            continuation.yield(user.map { User(uid: $0.uid, email: $0.email) })
+                            continuation.yield(user.map { User(email: $0.email, uid: $0.uid) })
                         }
                     continuation.onTermination = { _ in
                         Auth.auth().removeStateDidChangeListener(handle)

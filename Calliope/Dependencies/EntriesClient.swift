@@ -162,32 +162,32 @@ extension Entry {
     fileprivate init?(document: QueryDocumentSnapshot) {
         let data = document.data()
         guard
-            let id = UUID(uuidString: document.documentID),
-            let term = data["term"] as? String,
-            let definition = data["definition"] as? String,
-            let isBookmarked = data["isBookmarked"] as? Bool,
             let createdAt = data["createdAt"] as? Timestamp,
+            let definition = data["definition"] as? String,
+            let id = UUID(uuidString: document.documentID),
+            let isBookmarked = data["isBookmarked"] as? Bool,
+            let term = data["term"] as? String,
             let updatedAt = data["updatedAt"] as? Timestamp
         else {
             reportIssue("Skipping entry document \(document.documentID) that failed to decode.")
             return nil
         }
         self.init(
-            id: id,
-            term: term,
-            definition: definition,
-            isBookmarked: isBookmarked,
             createdAt: createdAt.dateValue(),
+            definition: definition,
+            id: id,
+            isBookmarked: isBookmarked,
+            term: term,
             updatedAt: updatedAt.dateValue()
         )
     }
 
     fileprivate var documentData: [String: Any] {
         [
-            "term": term,
+            "createdAt": Timestamp(date: createdAt),
             "definition": definition,
             "isBookmarked": isBookmarked,
-            "createdAt": Timestamp(date: createdAt),
+            "term": term,
             "updatedAt": Timestamp(date: updatedAt),
         ]
     }

@@ -6,10 +6,10 @@
 //
 
 struct User: Equatable, Sendable {
-    let uid: String
     var email: String?
+    let uid: String
 }
 
 extension User {
-    static let mock = User(uid: "mock-uid", email: "user@example.com")
+    static let mock = User(email: "user@example.com", uid: "mock-uid")
 }
