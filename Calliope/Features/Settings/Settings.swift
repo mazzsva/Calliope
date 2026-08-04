@@ -111,23 +111,21 @@ struct Settings {
 
     private func deleteAccount(uid: String) -> Effect<Action> {
         .run { send in
-            do {
-                let credential = try await signInWithAppleClient.requestCredential()
-                guard let authorizationCode = credential.authorizationCode else {
-                    throw AccountDeletionError.missingAuthorizationCode
-                }
-                await send(.appleCredentialReceived)
-                try await authClient.reauthenticate(credential: credential)
-                try Task.checkCancellation()
-                try await entriesClient.deleteAll(uid: uid)
-                await send(.entriesDeleted)
-                try Task.checkCancellation()
-                try await authClient.revokeAppleToken(authorizationCode: authorizationCode)
-                try Task.checkCancellation()
-                try await authClient.deleteAccount()
-            } catch {
-                await send(.accountDeletionFailed(error))
+            let credential = try await signInWithAppleClient.requestCredential()
+            guard let authorizationCode = credential.authorizationCode else {
+                throw AccountDeletionError.missingAuthorizationCode
             }
+            await send(.appleCredentialReceived)
+            try await authClient.reauthenticate(credential: credential)
+            try Task.checkCancellation()
+            try await entriesClient.deleteAll(uid: uid)
+            await send(.entriesDeleted)
+            try Task.checkCancellation()
+            try await authClient.revokeAppleToken(authorizationCode: authorizationCode)
+            try Task.checkCancellation()
+            try await authClient.deleteAccount()
+        } catch: { error, send in
+            await send(.accountDeletionFailed(error))
         }
         .cancellable(id: CancelID.accountDeletion)
     }
