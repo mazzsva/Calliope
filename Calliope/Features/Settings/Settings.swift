@@ -31,7 +31,7 @@ struct Settings {
         @Presents var alert: AlertState<Settings.Alert>?
         var deletionPhase: DeletionPhase?
         var hasDeletedEntries = false
-        var user: User
+        let user: User
 
         var isDeletingAccount: Bool { deletionPhase != nil }
     }

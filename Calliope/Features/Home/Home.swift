@@ -27,7 +27,7 @@ struct Home {
         var path = StackState<EntryDetail.State>()
         var searchText = ""
         let sessionOrigin: SessionOrigin
-        var user: User
+        let user: User
 
         @CasePathable
         enum SessionOrigin: Equatable {
