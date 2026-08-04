@@ -8,7 +8,7 @@
 import SwiftUI
 
 extension View {
-    func loadingWindow(isVisible: Bool, message: String? = nil) -> some View {
+    func loadingWindow(isVisible: Bool, message: String?) -> some View {
         background(LoadingWindow(isVisible: isVisible, message: message))
     }
 }
