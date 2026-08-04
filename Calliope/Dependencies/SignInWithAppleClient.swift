@@ -134,8 +134,8 @@ private func performAuthorization(hashedNonce: String) async throws -> ASAuthori
     return try await AuthorizationCoordinator().perform(request)
 }
 
-private func randomNonce(byteCount: Int = 32) -> String {
-    var bytes = [UInt8](repeating: 0, count: byteCount)
+private func randomNonce() -> String {
+    var bytes = [UInt8](repeating: 0, count: 32)
     let status = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
     precondition(status == errSecSuccess, "Unable to generate a random nonce.")
     return bytes.map { String(format: "%02x", $0) }.joined()
