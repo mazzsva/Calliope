@@ -21,10 +21,10 @@ struct SignInWithAppleClient: Sendable {
 }
 
 struct AppleCredential: Sendable {
-    var authorizationCode: String?
-    var idToken: String
-    var isFirstAuthorization: Bool
-    var rawNonce: String
+    let authorizationCode: String?
+    let idToken: String
+    let isFirstAuthorization: Bool
+    let rawNonce: String
 }
 
 enum AppleCredentialState: Sendable {
