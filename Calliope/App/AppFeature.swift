@@ -20,7 +20,6 @@ struct AppFeature {
     @ObservableState
     struct State: Equatable {
         var isSignedOutSettling = false
-
         @Presents var scene: Scene.State?
 
         var accountDeletionPhase: Settings.DeletionPhase? {

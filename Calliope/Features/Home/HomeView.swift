@@ -10,6 +10,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Bindable var store: StoreOf<Home>
+
     @Namespace private var namespace
 
     var body: some View {

@@ -21,18 +21,12 @@ struct Home {
     @ObservableState
     struct State: Equatable {
         @Presents var destination: Destination.State?
-
         var entries: IdentifiedArrayOf<Entry>?
-
         var isOnline = true
-
         var isSyncing = true
-
         var path = StackState<EntryDetail.State>()
         var searchText = ""
-
         let sessionOrigin: SessionOrigin
-
         var user: User
 
         @CasePathable
