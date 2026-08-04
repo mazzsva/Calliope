@@ -25,8 +25,8 @@ struct EntriesClient: Sendable {
 }
 
 struct EntriesSnapshot: Equatable, Sendable {
-    var entries: [Entry]
-    var isSyncing: Bool
+    let entries: [Entry]
+    let isSyncing: Bool
 }
 
 extension EntriesSnapshot {
