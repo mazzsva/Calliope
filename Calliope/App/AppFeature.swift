@@ -61,7 +61,7 @@ struct AppFeature {
 
     enum Action {
         case appBecameActive
-        case appleCredentialRevoked
+        case appleCredentialInvalidated(AppleCredentialState)
         case authUserChanged(User?)
         case scene(PresentationAction<Scene.Action>)
         case signedOutSettleTimerElapsed
@@ -87,13 +87,14 @@ struct AppFeature {
                 guard state.scene.is(\.home), !state.isDeletingAccount else { return .none }
                 return verifyAppleCredential()
 
-            case .appleCredentialRevoked:
+            case .appleCredentialInvalidated(let credentialState):
                 guard state.scene.is(\.home), !state.isDeletingAccount else { return .none }
-                logger.notice("Apple ID credential was revoked; signing out.")
+                logger.notice(
+                    "Apple ID credential is \(String(describing: credentialState), privacy: .public); signing out.")
                 return .run { _ in
                     try await authClient.signOut()
                 } catch: { error, _ in
-                    logger.error("Sign out after Apple ID credential revocation failed: \(error, privacy: .public)")
+                    logger.error("Sign out after Apple ID credential check failed: \(error, privacy: .public)")
                 }
 
             case .authUserChanged(let user):
@@ -136,7 +137,7 @@ struct AppFeature {
     private func observeCredentialRevocations() -> Effect<Action> {
         .run { send in
             for await _ in signInWithAppleClient.credentialRevocations() {
-                await send(.appleCredentialRevoked)
+                await send(.appleCredentialInvalidated(.revoked))
             }
         }
         .cancellable(id: CancelID.credentialRevocationObservation, cancelInFlight: true)
@@ -194,25 +195,11 @@ struct AppFeature {
     }
 
     private func verifyAppleCredential() -> Effect<Action> {
-        .run { _ in
+        .run { send in
             guard let appleUserID = authClient.appleUserID() else { return }
             let credentialState = await signInWithAppleClient.credentialState(userID: appleUserID)
-            try Task.checkCancellation()
-            switch credentialState {
-            case .authorized:
-                return
-            case .indeterminate:
-                logger.notice("Apple ID credential check was indeterminate; signing out.")
-                try await authClient.signOut()
-            case .notFound:
-                logger.notice("Apple ID credential was not found; signing out.")
-                try await authClient.signOut()
-            case .revoked:
-                logger.notice("Apple ID credential was revoked; signing out.")
-                try await authClient.signOut()
-            }
-        } catch: { error, _ in
-            logger.error("Sign out after Apple ID credential check failed: \(error, privacy: .public)")
+            guard credentialState != .authorized else { return }
+            await send(.appleCredentialInvalidated(credentialState))
         }
         .cancellable(id: CancelID.appleCredentialCheck, cancelInFlight: true)
     }
