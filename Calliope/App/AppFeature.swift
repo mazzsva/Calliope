@@ -22,12 +22,10 @@ struct AppFeature {
         var isSignedOutSettling = false
         var scene: Scene.State?
 
-        var accountDeletionPhase: Settings.DeletionPhase? {
-            guard case .home(let home) = scene else { return nil }
-            return home.accountDeletionPhase
+        var isDeletingAccount: Bool {
+            guard case .home(let home) = scene else { return false }
+            return home.isDeletingAccount
         }
-
-        var isDeletingAccount: Bool { accountDeletionPhase != nil }
 
         var isLoading: Bool {
             switch scene {
@@ -40,9 +38,14 @@ struct AppFeature {
             }
         }
 
+        var isReauthenticating: Bool {
+            guard case .home(let home) = scene else { return false }
+            return home.isReauthenticating
+        }
+
         var loadingMessage: String? {
             switch scene {
-            case .home where accountDeletionPhase == .deleting:
+            case .home where isDeletingAccount && !isReauthenticating:
                 return "Deleting your account…"
             case .home(let home) where home.isLoadingFirstEntries:
                 guard case .freshSignIn(let isNewAccount) = home.sessionOrigin else { return nil }

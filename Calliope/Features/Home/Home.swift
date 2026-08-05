@@ -40,11 +40,6 @@ struct Home {
             self.user = user
         }
 
-        var accountDeletionPhase: Settings.DeletionPhase? {
-            guard case .settings(let settings)? = destination else { return nil }
-            return settings.deletionPhase
-        }
-
         var entryCount: Int { entries?.count ?? 0 }
 
         var filteredEntries: IdentifiedArrayOf<Entry> {
@@ -56,9 +51,19 @@ struct Home {
             }
         }
 
+        var isDeletingAccount: Bool {
+            guard case .settings(let settings)? = destination else { return false }
+            return settings.isDeletingAccount
+        }
+
         var isFreshSignIn: Bool { sessionOrigin.is(\.freshSignIn) }
 
         var isLoadingFirstEntries: Bool { entries == nil }
+
+        var isReauthenticating: Bool {
+            guard case .settings(let settings)? = destination else { return false }
+            return settings.isReauthenticating
+        }
 
         var syncStatus: SyncStatus {
             guard isOnline else { return .offline }

@@ -21,19 +21,21 @@ struct Settings {
         case confirmSignOut
     }
 
-    enum DeletionPhase: Equatable {
-        case deleting
+    enum DeletionStep: Equatable {
+        case deletingEntries
         case reauthenticating
+        case revokingCredential
     }
 
     @ObservableState
     struct State: Equatable {
         @Presents var alert: AlertState<Settings.Alert>?
-        var deletionPhase: DeletionPhase?
-        var hasDeletedEntries = false
+        var deletionStep: DeletionStep?
         let user: User
 
-        var isDeletingAccount: Bool { deletionPhase != nil }
+        var isDeletingAccount: Bool { deletionStep != nil }
+
+        var isReauthenticating: Bool { deletionStep == .reauthenticating }
     }
 
     enum Action {
@@ -61,15 +63,23 @@ struct Settings {
         Reduce { state, action in
             switch action {
             case .accountDeletionFailed(let error):
-                state.deletionPhase = nil
+                guard state.deletionStep != .revokingCredential else {
+                    logger.error(
+                        "Account deletion failed after the revoke attempt; signing out: \(error, privacy: .public)")
+                    return .merge(
+                        .cancel(id: CancelID.accountDeletion),
+                        signOut()
+                    )
+                }
+                state.deletionStep = nil
                 if !error.isSignInWithAppleCancellation {
                     logger.error("Account deletion failed: \(error, privacy: .public)")
-                    state.alert = state.hasDeletedEntries ? .accountDeletionIncomplete : .accountDeletionFailed
+                    state.alert = .accountDeletionFailed
                 }
                 return .cancel(id: CancelID.accountDeletion)
 
             case .alert(.presented(.confirmAccountDeletion)):
-                state.deletionPhase = .reauthenticating
+                state.deletionStep = .reauthenticating
                 return deleteAccount(uid: state.user.uid)
 
             case .alert(.presented(.confirmSignOut)):
@@ -79,7 +89,7 @@ struct Settings {
                 return .none
 
             case .appleCredentialReceived:
-                state.deletionPhase = .deleting
+                state.deletionStep = .deletingEntries
                 return startDeletionTimeout()
 
             case .deleteAccountButtonTapped:
@@ -92,7 +102,7 @@ struct Settings {
                 return .run { _ in await dismiss() }
 
             case .entriesDeleted:
-                state.hasDeletedEntries = true
+                state.deletionStep = .revokingCredential
                 return .none
 
             case .signOutButtonTapped:
@@ -101,6 +111,7 @@ struct Settings {
                 return .none
 
             case .signOutFailed(let error):
+                state.deletionStep = nil
                 logger.error("Sign out failed: \(error, privacy: .public)")
                 state.alert = .signOutFailed
                 return .none
@@ -152,14 +163,6 @@ extension AlertState where Action == Settings.Alert {
         TextState("Couldn't Delete Account")
     } message: {
         TextState("Something went wrong while deleting your account. Please try again.")
-    }
-
-    static let accountDeletionIncomplete = AlertState {
-        TextState("Account Not Deleted")
-    } message: {
-        TextState(
-            "Your entries were deleted, but the account was not. Please try again to finish deleting your account."
-        )
     }
 
     static let confirmAccountDeletion = AlertState {
