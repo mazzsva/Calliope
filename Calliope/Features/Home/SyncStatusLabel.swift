@@ -30,23 +30,12 @@ struct SyncStatusLabel: View {
         .animation(.default, value: status)
     }
 
-    private var text: String {
+    private var text: LocalizedStringKey {
         switch status {
         case .offline:
             "No Internet"
         case .synced, .syncing:
-            countText
-        }
-    }
-
-    private var countText: String {
-        switch entryCount {
-        case 0:
-            "No Entries"
-        case 1:
-            "1 Entry"
-        default:
-            "\(entryCount) Entries"
+            entryCount == 0 ? "No Entries" : "^[\(entryCount) Entry](inflect: true)"
         }
     }
 }
