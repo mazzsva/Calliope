@@ -92,13 +92,9 @@ struct EntryForm {
 extension String {
     fileprivate func prefix(utf8Count: Int) -> Substring {
         guard utf8.count > utf8Count else { return self[...] }
-        var count = 0
-        var end = startIndex
-        while end < endIndex {
-            let next = index(after: end)
-            count += self[end ..< next].utf8.count
-            guard count <= utf8Count else { break }
-            end = next
+        var end = utf8.index(utf8.startIndex, offsetBy: utf8Count)
+        while String.Index(end, within: self) == nil {
+            end = utf8.index(before: end)
         }
         return self[..<end]
     }
