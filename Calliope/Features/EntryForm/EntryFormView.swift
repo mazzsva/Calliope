@@ -57,7 +57,7 @@ struct EntryFormView: View {
 
 #Preview("Create") {
     EntryFormView(
-        store: Store(initialState: EntryForm.State(mode: .create)) {
+        store: Store(initialState: EntryForm.State()) {
             EntryForm()
         }
     )
@@ -65,7 +65,7 @@ struct EntryFormView: View {
 
 #Preview("Edit") {
     EntryFormView(
-        store: Store(initialState: EntryForm.State(mode: .edit(.mock))) {
+        store: Store(initialState: EntryForm.State(entry: .mock)) {
             EntryForm()
         }
     )

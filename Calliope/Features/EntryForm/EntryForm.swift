@@ -13,32 +13,20 @@ struct EntryForm {
     static let maxDefinitionUTF8Count = 40_000
     static let maxTermUTF8Count = 800
 
-    @CasePathable
-    enum Mode: Equatable {
-        case create
-        case edit(Entry)
-    }
-
     @ObservableState
     struct State: Equatable {
         var definition: String
-        let mode: Mode
+        let entry: Entry?
         var term: String
 
-        init(mode: Mode) {
-            self.mode = mode
-            switch mode {
-            case .create:
-                definition = ""
-                term = ""
-            case .edit(let entry):
-                definition = entry.definition
-                term = entry.term
-            }
+        init(entry: Entry? = nil) {
+            self.entry = entry
+            definition = entry?.definition ?? ""
+            term = entry?.term ?? ""
         }
 
         var isCreating: Bool {
-            mode.is(\.create)
+            entry == nil
         }
 
         var isSubmittable: Bool {
@@ -87,25 +75,14 @@ struct EntryForm {
                 guard state.isSubmittable else { return .none }
                 let term = state.term.trimmingCharacters(in: .whitespacesAndNewlines)
                 let definition = state.definition.trimmingCharacters(in: .whitespacesAndNewlines)
-                let entry: Entry
-                switch state.mode {
-                case .create:
-                    entry = Entry(
-                        createdAt: now,
-                        definition: definition,
-                        id: uuid(),
-                        isBookmarked: false,
-                        term: term
-                    )
-                case .edit(let original):
-                    entry = Entry(
-                        createdAt: original.createdAt,
-                        definition: definition,
-                        id: original.id,
-                        isBookmarked: original.isBookmarked,
-                        term: term
-                    )
-                }
+                let original = state.entry
+                let entry = Entry(
+                    createdAt: original?.createdAt ?? now,
+                    definition: definition,
+                    id: original?.id ?? uuid(),
+                    isBookmarked: original?.isBookmarked ?? false,
+                    term: term
+                )
                 return .send(.delegate(.didSubmit(entry)))
             }
         }

@@ -161,7 +161,7 @@ struct Home {
                 return .none
 
             case .newEntryButtonTapped:
-                state.destination = .createEntry(EntryForm.State(mode: .create))
+                state.destination = .createEntry(EntryForm.State())
                 return .none
 
             case .path(.element(id: let id, action: .delegate(.didDelete(let entryID)))):

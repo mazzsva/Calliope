@@ -74,7 +74,7 @@ struct EntryDetail {
                 return .none
 
             case .editButtonTapped:
-                state.destination = .editEntry(EntryForm.State(mode: .edit(state.entry)))
+                state.destination = .editEntry(EntryForm.State(entry: state.entry))
                 return .none
             }
         }
