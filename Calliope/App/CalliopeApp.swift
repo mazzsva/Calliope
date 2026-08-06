@@ -18,6 +18,7 @@ struct CalliopeApp: App {
     }
 
     init() {
+        guard !isTesting else { return }
         FirebaseApp.configure()
     }
 
