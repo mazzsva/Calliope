@@ -28,6 +28,10 @@ struct AppView: View {
             }
         }
         .loadingWindow(isVisible: store.isLoading, message: store.loadingMessage)
+        .sheet(isPresented: .constant(store.isPresentingWelcome)) {
+            WelcomeView { store.send(.welcomeContinueButtonTapped) }
+                .interactiveDismissDisabled()
+        }
         .task { await store.send(.task).finish() }
         .onChange(of: scenePhase) { _, newPhase in scenePhaseChanged(to: newPhase) }
     }

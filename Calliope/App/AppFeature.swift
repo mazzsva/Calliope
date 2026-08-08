@@ -19,6 +19,7 @@ struct AppFeature {
 
     @ObservableState
     struct State: Equatable {
+        @Shared(.hasDismissedWelcome) var hasDismissedWelcome
         var isSignedOutSettling = false
         var scene: Scene.State?
 
@@ -41,6 +42,10 @@ struct AppFeature {
         var isReauthenticating: Bool {
             guard case .home(let home) = scene else { return false }
             return home.isReauthenticating
+        }
+
+        var isPresentingWelcome: Bool {
+            !hasDismissedWelcome && !isLoading
         }
 
         var loadingMessage: String? {
@@ -70,6 +75,7 @@ struct AppFeature {
         case scene(Scene.Action)
         case signedOutSettleTimerElapsed
         case task
+        case welcomeContinueButtonTapped
     }
 
     enum CancelID {
@@ -116,6 +122,10 @@ struct AppFeature {
                     observeAuthChanges(),
                     observeCredentialRevocations()
                 )
+
+            case .welcomeContinueButtonTapped:
+                state.$hasDismissedWelcome.withLock { $0 = true }
+                return .none
             }
         }
         .ifLet(\.scene, action: \.scene) {
@@ -212,5 +222,11 @@ struct AppFeature {
 }
 
 extension AppFeature.Scene.State: Equatable {}
+
+extension SharedKey where Self == AppStorageKey<Bool>.Default {
+    static var hasDismissedWelcome: Self {
+        Self[.appStorage("hasDismissedWelcome"), default: false]
+    }
+}
 
 private let logger = Logger(category: "AppFeature")
